@@ -1,0 +1,18 @@
+services:
+  main_db:
+    container_name: 'ichat_bot_main_db'
+    image: postgres:alpine
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - 5432:5432
+    volumes:
+      - main_db:/var/lib/postgresql/data
+volumes:
+  main_db:
