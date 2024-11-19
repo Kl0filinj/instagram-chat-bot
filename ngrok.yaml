@@ -1,0 +1,5 @@
+authtoken: ${NGROK_AUTH_TOKEN}
+tunnels:
+  myapp:
+    proto: http
+    addr: ${APP_PORT}

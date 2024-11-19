@@ -4,10 +4,10 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReportsModule } from './reports/reports.module';
 import { ConfigModule } from '@nestjs/config';
-import { UserModule } from './user/user.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
-  imports: [PrismaModule, ReportsModule, ConfigModule, UserModule],
+  imports: [PrismaModule, ReportsModule, ConfigModule, WebhooksModule],
   controllers: [AppController],
   providers: [AppService],
 })
