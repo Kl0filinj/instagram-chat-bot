@@ -44,21 +44,15 @@ export class WebhooksController {
     // if (!this.webhooksService.verifySignature(payload, signature)) {
     //   throw new ForbiddenException('Invalid signature');
     // }
+    console.log('verifySignature PASSED !@@! : ');
 
-    // if (payload.object === 'instagram') {
-    //   for (const entry of payload.entry) {
-    //     for (const messaging of entry.messaging) {
-    //       if (messaging.message) {
-    //         console.log('messaging : ', messaging);
-    //         await this.webhooksService.handleMessage(messaging);
-    //       }
-    //     }
-    //   }
-    // }
+    if (payload.object === 'instagram') {
+      for (const entry of payload.entry) {
+        const messagesChanges = entry.changes.filter(
+          (item) => item.field === 'messages',
+        );
+        await this.webhooksService.handleMessage(messagesChanges[0]);
+      }
+    }
   }
-
-  // @Post('sub')
-  // async subscribeToWebhooks() {
-  //   await this.webhooksService.subscribeToWebhooks();
-  // }
 }
