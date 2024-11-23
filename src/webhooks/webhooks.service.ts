@@ -58,14 +58,14 @@ export class WebhooksService {
       message: 'TextTextText',
     };
     const headers = {
-      Authorization: `Bearer IGQWRPT2JxaWNUeVBIXzh2cU85ZAGRvdC14TlF6X19ycnN0eEYwV1Jjclk2NzZAnaTRpRHE1dDljT0dBdGJHV0xEclZA2SjZALRzRqMXhKR3ZAVOGNlYnhNcS1XUjlvcFAydEsyVGxIWW90Um9STlZAoLWtfbzg0NXhabUkZD`,
+      Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
     };
-    // const url = `${FB_GRAPH_BASE_URL}${1334833581016718}/messages?recipient=${JSON.stringify(
+    // const url = `${FB_GRAPH_BASE_URL}${}/messages?recipient=${JSON.stringify(
     //   {
     //     id: process.env.trial_IG_ACCOUNT_ID,
     //   },
-    // )}&message=${'TestText'}&access_token=EAAWIAUbZAXgwBO00yU44sDQcLZAaUZBZBZCwh8Mzs0glGsHiSqSL4pG8VGkoryA8PPjgK68h52Nz9HR3HUnZCg6gWEZAxwu4r2AmSI5J7IVomwoLCuqfbwU3eSZAAwTP56j9tB20FTtyGHo0TMiYZAb3fCEkxv3XAH3FSZAhVjvTZCzutUCpaHe2miaOzEIBkFFkXcxPRJkNlIHi5iSkW26h7wZD`;
+    // )}&message=${'TestText'}&access_token=`;
 
     console.log('url : ', url);
     console.log('body : ', data);
