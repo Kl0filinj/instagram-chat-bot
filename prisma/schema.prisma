@@ -14,19 +14,22 @@ datasource db {
 }
 
 model User {
-  id            String    @id @unique @default(uuid())
-  age           Int
-  sex           UserSex
-  sexInterest   UserSex
-  city          String
-  name          String
+  id            String    @id @unique
+  age           Int?
+  sex           UserSex?
+  sexInterest   UserSex?
+  city          String?
+  name          String?
   bio           String?
   // media      // TODO:  Maybe add separate table for files and link and id here
   rejectedUsers String[]
   likedUsers    String[]
   isBlocked     Boolean   @default(false)
+  isActive      Boolean   @default(true) // Is user in active search
   createdAt     DateTime  @default(now())
-  Reports       Reports[]
+  isRegistered  Boolean   @default(false)
+  lastCmd       String?
+  reports       Reports[]
 
   @@index([id, name, city])
 }
