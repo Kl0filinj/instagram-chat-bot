@@ -21,7 +21,7 @@ model User {
   city          String?
   name          String?
   bio           String?
-  // media      // TODO:  Maybe add separate table for files and link and id here
+  avatarUrl     String?
   rejectedUsers String[]
   likedUsers    String[]
   isBlocked     Boolean   @default(false)
@@ -35,9 +35,9 @@ model User {
 }
 
 enum UserSex {
-  Male
-  Female
-  None
+  male
+  female
+  none
 }
 
 model Reports {

@@ -14,6 +14,11 @@ import {
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
+  // @Get('test')
+  // test() {
+  //   return this.webhooksService.test();
+  // }
+
   @Get()
   verifyWebhook(
     @Query('hub.mode') mode: string,
@@ -46,54 +51,7 @@ export class WebhooksController {
     // }
     console.log('verifySignature PASSED !@@! : ');
 
-    if (payload.object === 'instagram') {
-      if (payload.entry.length !== 0) {
-        const currentEntry = payload.entry[0];
-        if (currentEntry && currentEntry.messaging) {
-          const currentChange = currentEntry.messaging[0];
-          const changeFields = Object.keys(currentChange);
-          const messageFields = Object.keys(currentChange?.message ?? {});
-          const isStart =
-            !!changeFields.find((item) => item === 'message') &&
-            currentChange?.message?.text === '/start';
-          const isReply =
-            !!changeFields.find((item) => item === 'message') &&
-            !!messageFields.find((item) => item === 'quick_reply');
-          const senderId = currentChange.sender.id;
-
-          if (String(senderId) === '17841470558631310') {
-            return;
-          }
-
-          console.log('currentChange : ', currentChange);
-          console.log('isStart : ', isStart);
-          console.log('isReply : ', isReply);
-          console.log('senderId : ', senderId);
-
-          //* Need to determine here is it /start or reply message
-          const message = currentChange.message;
-
-          if (isStart) {
-            await this.webhooksService.handleStartMessage({
-              senderId,
-            });
-            return;
-          }
-
-          if (isReply) {
-            await this.webhooksService.handleReply({
-              text: message.text,
-              payload: message.quick_reply.payload,
-              senderId,
-            });
-            return;
-          }
-
-          // TODO: FIX RECURSION)
-          // await this.webhooksService.wrongReply(senderId);
-          return;
-        }
-      }
-    }
+    await this.webhooksService.handleIncomingWebhook(payload);
+    return;
   }
 }

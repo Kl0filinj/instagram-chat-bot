@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserSex" AS ENUM ('Male', 'Female', 'None');
+CREATE TYPE "UserSex" AS ENUM ('male', 'female', 'none');
 
 -- CreateTable
 CREATE TABLE "User" (

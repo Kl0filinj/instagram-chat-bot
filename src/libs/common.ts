@@ -1,7 +1,8 @@
 export enum UserSexEnum {
-  Male = 'Male',
-  Female = 'Female',
-  None = 'None',
+  male = 'male',
+  female = 'female',
+  none = 'none',
 }
 
-export type UserSexType = 'Male' | 'Female' | 'None';
+export type UserSexType = 'male' | 'female' | 'none';
+export type SendMessageType = 'text' | 'image';
