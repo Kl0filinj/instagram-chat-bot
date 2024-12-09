@@ -3,6 +3,13 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.user.deleteMany({
+    where: {
+      id: {
+        not: '922129809859449',
+      },
+    },
+  });
   const generateMockUsers = (count: number): any[] => {
     const sexOptions: ('male' | 'female' | 'none')[] = [
       'male',
@@ -26,7 +33,7 @@ async function main() {
   };
 
   await prisma.user.createMany({
-    data: generateMockUsers(15),
+    data: generateMockUsers(1000),
   });
 }
 

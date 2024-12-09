@@ -20,12 +20,55 @@ import {
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 
+// TODO: IMPROVE CODE & ARCH
+// TODO: RESUBMIT PROFILE FLOW
+// TODO: REPORT SYSTEM
+
 @Injectable()
 export class WebhooksService {
   constructor(
     private prisma: PrismaService,
     private readonly httpRepository: HttpRepository,
   ) {}
+
+  async handleCommand(igId: string, cmd: string) {
+    switch (cmd) {
+      case '/start':
+        await this.handleStartMessage(igId);
+        return;
+
+      case '/continue':
+        await this.handleContinueRegistration(igId);
+        return;
+
+      case '/menu':
+        await this.handleMenu(igId);
+        return;
+
+      default:
+        const targetUser = await this.prisma.user.findUnique({
+          where: { id: igId },
+        });
+        const isUserRegistered = !targetUser ? false : targetUser.isRegistered;
+        await this.wrongReply(igId, isUserRegistered);
+        return;
+    }
+  }
+
+  async handleMenu(igId: string) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id: igId,
+      },
+    });
+
+    await this.httpRepository.sendTempalte(targetUser.id, {
+      title: `Name: ${targetUser.name}`,
+      subtitle: `Age: ${targetUser.age}\nLocation: ${targetUser.city}\nAbout: ${targetUser.bio}`,
+      image_url: targetUser.avatarUrl,
+      buttons: templateButtons.hub,
+    });
+  }
 
   async handleContinueRegistration(igId: string) {
     const targetUser = await this.prisma.user.findUnique({
@@ -341,6 +384,7 @@ export class WebhooksService {
         data: {
           name,
           avatarUrl: profilePicture,
+          isRegistered: true,
           lastCmd: null,
         },
       });
@@ -432,45 +476,9 @@ export class WebhooksService {
       },
     });
 
-    const minAgeLimit =
-      targetUser.sex === 'male' ? targetUser.age - 2 : targetUser.age - 1;
-    const maxAgeLimit =
-      targetUser.sex === 'male' ? targetUser.age + 1 : targetUser.age + 2;
-
-    console.log('minAgeLimit : ', minAgeLimit);
-    console.log('maxAgeLimit : ', maxAgeLimit);
-
-    const nextUser = await this.prisma.user.findFirst({
-      where: {
-        id: {
-          notIn: [igId, ...targetUser.likedUsers, ...targetUser.rejectedUsers],
-        },
-        city: targetUser.city,
-        age: {
-          lte: maxAgeLimit,
-          gte: minAgeLimit,
-        },
-        ...(targetUser.sexInterest !== 'none' && {
-          sex: targetUser.sexInterest,
-        }),
-      },
-      orderBy: {
-        age: 'desc',
-      },
-    });
-
-    await this.httpRepository.sendTempalte(igId, {
-      title: `Name: ${nextUser.name}`,
-      subtitle: `Age: ${nextUser.age}\nLocation: ${nextUser.city}\nAbout: ${nextUser.bio}`,
-      image_url: nextUser.avatarUrl,
-      buttons: templateButtons.scroll.map((item) => ({
-        ...item,
-        payload: `${item}-${nextUser.id}`,
-      })),
-    });
+    await this.scrollSendNextUser(targetUser);
   }
 
-  // TODO: COMPLETE THIS FNC
   private async scrollLike(igId: string, targetIgId: string) {
     const targetUser = await this.prisma.user.update({
       where: {
@@ -483,45 +491,11 @@ export class WebhooksService {
       },
     });
 
-    const minAgeLimit =
-      targetUser.sex === 'male' ? targetUser.age - 2 : targetUser.age - 1;
-    const maxAgeLimit =
-      targetUser.sex === 'male' ? targetUser.age + 1 : targetUser.age + 2;
-
-    console.log('minAgeLimit : ', minAgeLimit);
-    console.log('maxAgeLimit : ', maxAgeLimit);
-
-    const nextUser = await this.prisma.user.findFirst({
-      where: {
-        id: {
-          notIn: [igId, ...targetUser.likedUsers, ...targetUser.rejectedUsers],
-        },
-        city: targetUser.city,
-        age: {
-          lte: maxAgeLimit,
-          gte: minAgeLimit,
-        },
-        ...(targetUser.sexInterest !== 'none' && {
-          sex: targetUser.sexInterest,
-        }),
-      },
-      orderBy: {
-        age: 'desc',
-      },
-    });
-
-    await this.httpRepository.sendTempalte(igId, {
-      title: `Name: ${nextUser.name}`,
-      subtitle: `Age: ${nextUser.age}\nLocation: ${nextUser.city}\nAbout: ${nextUser.bio}`,
-      image_url: nextUser.avatarUrl,
-      buttons: templateButtons.scroll.map((item) => ({
-        ...item,
-        payload: `${item}-${nextUser.id}`,
-      })),
-    });
+    //* USER THAT WAS Liked gets an message about it
+    // TODO: Add it here
+    await this.scrollSendNextUser(targetUser);
   }
 
-  // TODO: COMPLETE THIS FNC
   private async scrollDislike(igId: string, targetIgId: string) {
     const targetUser = await this.prisma.user.update({
       where: {
@@ -534,6 +508,10 @@ export class WebhooksService {
       },
     });
 
+    await this.scrollSendNextUser(targetUser);
+  }
+
+  private async scrollSendNextUser(targetUser: UserEntity) {
     const minAgeLimit =
       targetUser.sex === 'male' ? targetUser.age - 2 : targetUser.age - 1;
     const maxAgeLimit =
@@ -545,7 +523,11 @@ export class WebhooksService {
     const nextUser = await this.prisma.user.findFirst({
       where: {
         id: {
-          notIn: [igId, ...targetUser.likedUsers, ...targetUser.rejectedUsers],
+          notIn: [
+            targetUser.id,
+            ...targetUser.likedUsers,
+            ...targetUser.rejectedUsers,
+          ],
         },
         city: targetUser.city,
         age: {
@@ -561,13 +543,13 @@ export class WebhooksService {
       },
     });
 
-    await this.httpRepository.sendTempalte(igId, {
+    await this.httpRepository.sendTempalte(targetUser.id, {
       title: `Name: ${nextUser.name}`,
       subtitle: `Age: ${nextUser.age}\nLocation: ${nextUser.city}\nAbout: ${nextUser.bio}`,
       image_url: nextUser.avatarUrl,
       buttons: templateButtons.scroll.map((item) => ({
         ...item,
-        payload: `${item}-${nextUser.id}`,
+        payload: `${item.payload}-${nextUser.id}`,
       })),
     });
   }
@@ -608,6 +590,9 @@ export class WebhooksService {
           const changeFields = Object.keys(currentChange);
           const senderId = currentChange.sender.id;
 
+          console.log('changeFields : ', changeFields);
+          console.log('currentChange : ', currentChange);
+
           //* We brake a cycle if its our message or it's not message hook from client
           const availableHooks = ['message', 'postback'];
           if (
@@ -622,27 +607,24 @@ export class WebhooksService {
           const isStart = currentChange?.message?.text === '/start';
           const isContinueRegistration =
             currentChange?.message?.text === '/continue';
+          const isMenu = currentChange?.message?.text === '/menu';
           const isReply = !!messageFields.find(
             (item) => item === 'quick_reply',
           );
+          console.log('currentChangeFields : ', currentChangeFields);
           const isPostback = !!currentChangeFields.find(
             (item) => item === 'postback',
           );
 
-          console.log('changeFields : ', changeFields);
-          console.log('currentChange : ', currentChange);
           console.log('isStart : ', isStart);
           console.log('isReply : ', isReply);
+          console.log('isPostback : ', isPostback);
           console.log('senderId : ', senderId);
           console.log('isContinueRegistration : ', isContinueRegistration);
+          console.log('isMenu : ', isMenu);
 
-          if (isStart) {
-            await this.handleStartMessage(senderId);
-            return;
-          }
-
-          if (isContinueRegistration) {
-            await this.handleContinueRegistration(senderId);
+          if (isStart || isContinueRegistration || isMenu) {
+            await this.handleCommand(senderId, currentChange.message.text);
             return;
           }
 
@@ -687,6 +669,7 @@ export class WebhooksService {
           const isUserRegistered = !targetUser
             ? false
             : targetUser.isRegistered;
+          console.log('isUserRegistered : ', isUserRegistered);
           await this.wrongReply(senderId, isUserRegistered);
           return;
         }
