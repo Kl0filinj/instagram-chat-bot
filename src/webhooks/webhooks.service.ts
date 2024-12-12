@@ -6,23 +6,28 @@ import {
   HandleReplyDto,
   HandleStartMessageDto,
   HttpRepository,
+  isUserInfoFlowType,
   menuCmd,
   QuickReplyItemDto,
   RegistrationPayloadDto,
   registrationPrompts,
-  registrationTextSteps,
+  userInfoTextSteps,
   startAge,
   startCmd,
   templateButtons,
   UserEntity,
+  UserInfoFlowType,
   UserSexType,
   wrongReplyBaseMessage,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 
-// TODO: IMPROVE CODE & ARCH
-// TODO: RESUBMIT PROFILE FLOW
+// TODO: RESUBMIT PROFILE FLOW - ✅ FIX ISSUE WItH WRONG CMD WHILE RESUBMITTING
+// TODO: LIKE NOTIFICATION SYSTEM
 // TODO: REPORT SYSTEM
+// TODO: CHECK SUBSCRIPTION FUNCTIONALITY
+// TODO: Improve algorithm with location (SIMPLE Version - done) - ✅
+// TODO: IMPROVE CODE & ARCH
 
 @Injectable()
 export class WebhooksService {
@@ -109,7 +114,7 @@ export class WebhooksService {
     });
 
     if (!targetUser) {
-      await this.startFlow(igId);
+      await this.userInfoFlow('registration:init', igId);
       return;
     }
 
@@ -136,24 +141,7 @@ export class WebhooksService {
     console.log('isSubscribed : ', isSubscribed);
 
     if (isSubscribed) {
-      const replyOptions: QuickReplyItemDto[] = Array.from(
-        { length: 13 },
-        (_, index) => {
-          const currentNumber = index + startAge + 1;
-
-          return {
-            title: currentNumber.toString(),
-            payload: `registration:age-${currentNumber}`,
-          };
-        },
-      );
-
-      await this.setLastStep(igId, 'registration:age');
-      await this.httpRepository.sendQuickReply(
-        igId,
-        'Lets create your personal card.\nHow old are you ?',
-        replyOptions,
-      );
+      await this.userInfoInitStep(igId, 'registration');
       return;
     } else {
       // TODO: Maybe change from message to template
@@ -181,8 +169,9 @@ export class WebhooksService {
     console.log('payload (FLOW) : ', payload);
 
     switch (generalFlow) {
+      case 'resubmit':
       case 'registration':
-        await this.registrationFlow(payload, senderId);
+        await this.userInfoFlow(payload, senderId);
         return;
       case 'scroll':
         await this.scrollFlow(payload, senderId);
@@ -197,47 +186,105 @@ export class WebhooksService {
     }
   }
 
-  async registrationFlow(flow: string, igId: string) {
-    const registrationFlow = flow.split('-')[0];
-    const registrationValue = flow.split('-')[1];
+  async userInfoFlow(flow: string, igId: string) {
+    const userInfoFlow = flow.split('-')[0];
+    const userInfoValue = flow.split('-')[1];
+    const flowOrigin = flow.split(':')[0];
 
-    console.log('registrationFlow : ', registrationFlow);
-    console.log('registrationValue : ', registrationValue);
+    console.log('userInfoFlow : ', userInfoFlow);
+    console.log('userInfoValue : ', userInfoValue);
+    console.log('flowOrigin : ', flowOrigin);
 
-    switch (registrationFlow) {
+    if (!isUserInfoFlowType(flowOrigin)) {
+      await this.unpredictableError(igId);
+      return;
+    }
+
+    type FlowOptions = {
+      isRegistered: boolean;
+    };
+    const flowOptions: Record<UserInfoFlowType, FlowOptions> = {
+      registration: {
+        isRegistered: false,
+      },
+      resubmit: {
+        isRegistered: true,
+      },
+    };
+    const currentFlowOption: FlowOptions = flowOptions[flowOrigin];
+
+    switch (userInfoFlow) {
+      case 'resubmit:init':
+      case 'registration:init':
+        await this.userInfoInitStep(igId, flowOrigin);
+        return;
+      case 'resubmit:age':
       case 'registration:age':
-        await this.ageStep(igId, parseInt(registrationValue));
+        await this.ageStep(igId, parseInt(userInfoValue), flowOrigin);
         return;
+      case 'resubmit:sex':
       case 'registration:sex':
-        await this.sexStep(igId, registrationValue as UserSexType);
+        await this.sexStep(igId, userInfoValue as UserSexType, flowOrigin);
         return;
+      case 'resubmit:sexInterest':
       case 'registration:sexInterest':
-        await this.sexInterestStep(igId, registrationValue as UserSexType);
+        await this.sexInterestStep(
+          igId,
+          userInfoValue as UserSexType,
+          flowOrigin,
+        );
         return;
+      case 'resubmit:bio':
       case 'registration:bio':
-        await this.bioStep(igId, registrationValue);
+        await this.bioStep(igId, userInfoValue, flowOrigin);
         return;
+      case 'resubmit:location':
       case 'registration:location':
-        await this.locationStep(igId, registrationValue);
+        await this.locationStep(igId, userInfoValue, flowOrigin);
         return;
+      case 'resubmit:name':
       case 'registration:name':
-        await this.nameStep(igId, registrationValue);
+        await this.nameStep(igId, userInfoValue);
+        return;
+      default:
+        await this.wrongReply(igId, currentFlowOption.isRegistered);
         return;
     }
   }
 
-  private async ageStep(igId: string, age: number) {
-    const mode = 'create';
+  private async userInfoInitStep(igId: string, flow: UserInfoFlowType) {
+    console.log('userInfoInitStep');
+    const replyOptions: QuickReplyItemDto[] = Array.from(
+      { length: 13 },
+      (_, index) => {
+        const currentNumber = index + startAge + 1;
 
+        return {
+          title: currentNumber.toString(),
+          payload: `${flow}:age-${currentNumber}`,
+        };
+      },
+    );
+
+    await this.setLastStep(igId, `${flow}:age`);
+    await this.httpRepository.sendQuickReply(
+      igId,
+      'Lets create your personal card.\nHow old are you ?',
+      replyOptions,
+    );
+    return;
+  }
+
+  private async ageStep(igId: string, age: number, flow: UserInfoFlowType) {
     try {
-      if (mode === 'create') {
+      if (flow === 'registration') {
         await this.prisma.user.create({
           data: {
             id: igId,
             age,
           },
         });
-      } else {
+      } else if (flow === 'resubmit') {
         await this.prisma.user.update({
           where: {
             id: igId,
@@ -248,15 +295,17 @@ export class WebhooksService {
         });
       }
     } catch (error) {
-      // TODO: Add function to send error reply
+      console.log('ERROR: ageStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
     }
 
     const sexStepOptions: { title: UserSexType; payload: string }[] = [
-      { title: 'male', payload: 'registration:sex-male' },
-      { title: 'female', payload: 'registration:sex-female' },
+      { title: 'male', payload: `${flow}:sex-male` },
+      { title: 'female', payload: `${flow}:sex-female` },
       // { title: 'none', payload: 'registration:sex-none' },
     ];
-    await this.setLastStep(igId, 'registration:sex');
+    await this.setLastStep(igId, `${flow}:sex`);
     await this.httpRepository.sendQuickReply(
       igId,
       'What gender are you ?',
@@ -264,7 +313,11 @@ export class WebhooksService {
     );
   }
 
-  private async sexStep(igId: string, sex: UserSexType) {
+  private async sexStep(
+    igId: string,
+    sex: UserSexType,
+    flow: UserInfoFlowType,
+  ) {
     try {
       await this.prisma.user.update({
         where: {
@@ -275,16 +328,17 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      // TODO: Add function to send error reply
-      console.log('SEX UpDATE ERROR : ', error);
+      console.log('ERROR: sexStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
     }
 
     const sexInterestStepOptions: { title: UserSexType; payload: string }[] = [
-      { title: 'none', payload: 'registration:sexInterest-none' },
-      { title: 'male', payload: 'registration:sexInterest-male' },
-      { title: 'female', payload: 'registration:sexInterest-female' },
+      { title: 'none', payload: `${flow}:sexInterest-none` },
+      { title: 'male', payload: `${flow}:sexInterest-male` },
+      { title: 'female', payload: `${flow}:sexInterest-female` },
     ];
-    await this.setLastStep(igId, 'registration:sexInterest');
+    await this.setLastStep(igId, `${flow}:sexInterest`);
     await this.httpRepository.sendQuickReply(
       igId,
       'Who are you interested in ?',
@@ -292,7 +346,11 @@ export class WebhooksService {
     );
   }
 
-  private async sexInterestStep(igId: string, sexInterest: UserSexType) {
+  private async sexInterestStep(
+    igId: string,
+    sexInterest: UserSexType,
+    flow: UserInfoFlowType,
+  ) {
     try {
       await this.prisma.user.update({
         where: {
@@ -303,11 +361,12 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      console.log('SEX INTEREST UpDATE ERROR : ', error);
-      // TODO: Add function to send error reply
+      console.log('ERROR: ageStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
     }
 
-    await this.setLastStep(igId, 'registration:bio');
+    await this.setLastStep(igId, `${flow}:bio`);
     await this.httpRepository.sendMessage(
       igId,
       'Tell us about yourself. 1-3 short sentences',
@@ -315,7 +374,7 @@ export class WebhooksService {
     );
   }
 
-  private async bioStep(igId: string, bio: string) {
+  private async bioStep(igId: string, bio: string, flow: UserInfoFlowType) {
     try {
       await this.prisma.user.update({
         where: {
@@ -326,10 +385,12 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      // TODO: Add function to send error reply
+      console.log('ERROR: bioStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
     }
 
-    await this.setLastStep(igId, 'registration:location');
+    await this.setLastStep(igId, `${flow}:location`);
     await this.httpRepository.sendMessage(
       igId,
       'Now specify your location',
@@ -337,7 +398,11 @@ export class WebhooksService {
     );
   }
 
-  private async locationStep(igId: string, location: string) {
+  private async locationStep(
+    igId: string,
+    location: string,
+    flow: UserInfoFlowType,
+  ) {
     const findCityResp = findCity(location);
     console.log('findCityResp : ', findCityResp);
 
@@ -360,10 +425,12 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      // TODO: Add function to send error reply
+      console.log('ERROR: locationStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
     }
 
-    await this.setLastStep(igId, 'registration:name');
+    await this.setLastStep(igId, `${flow}:name`);
     await this.httpRepository.sendMessage(
       igId,
       'Finally, what is your name ?',
@@ -389,7 +456,9 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      // TODO: Add function to send error reply
+      console.log('ERROR: nameStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
     }
 
     await this.httpRepository.sendTempalte(igId, {
@@ -419,7 +488,7 @@ export class WebhooksService {
     }
   }
 
-  async isRegistrationTextStep(igId: string) {
+  async isUserInfoTextStep(igId: string) {
     const targetUser = await this.prisma.user.findUnique({
       where: {
         id: igId,
@@ -430,7 +499,7 @@ export class WebhooksService {
       return false;
     }
 
-    if (registrationTextSteps.includes(targetUser.lastCmd)) {
+    if (userInfoTextSteps.includes(targetUser.lastCmd)) {
       return targetUser.lastCmd;
     }
 
@@ -454,18 +523,12 @@ export class WebhooksService {
       case 'scroll:dislike':
         await this.scrollDislike(igId, scrollValue);
         return;
-      // case 'scroll:sexInterest':
-      //   await this.sexInterestStep(igId, scrollValue as UserSexType);
-      //   return;
-      // case 'scroll:bio':
-      //   await this.bioStep(igId, scrollValue);
-      //   return;
-      // case 'scroll:location':
-      //   await this.locationStep(igId, scrollValue);
-      //   return;
-      // case 'scroll:name':
-      //   await this.nameStep(igId, scrollValue);
-      //   return;
+      case 'scroll:menu':
+        await this.handleMenu(igId);
+        return;
+      default:
+        await this.wrongReply(igId, true);
+        return;
     }
   }
 
@@ -543,6 +606,16 @@ export class WebhooksService {
       },
     });
 
+    if (!nextUser) {
+      await this.httpRepository.sendMessage(
+        targetUser.id,
+        `Sorry, ${targetUser.name}, but we've run out of active users in the ${targetUser.city}`,
+        'text',
+      );
+      await this.handleMenu(targetUser.id);
+      return;
+    }
+
     await this.httpRepository.sendTempalte(targetUser.id, {
       title: `Name: ${nextUser.name}`,
       subtitle: `Age: ${nextUser.age}\nLocation: ${nextUser.city}\nAbout: ${nextUser.bio}`,
@@ -565,6 +638,15 @@ export class WebhooksService {
     const wrongReplyMessage = `${wrongReplyBaseMessage}
     ${currentCmdsPreset}`;
     await this.httpRepository.sendMessage(igId, wrongReplyMessage, 'text');
+    return;
+  }
+
+  async unpredictableError(igId: string) {
+    await this.httpRepository.sendMessage(
+      igId,
+      'An unpredictable error occurred, contact support@trial2024.com',
+      'text',
+    );
     return;
   }
 
@@ -629,13 +711,13 @@ export class WebhooksService {
           }
 
           //* Here we check if user send an answer to registration text question
-          const isRegistrationTextAnswer = await this.isRegistrationTextStep(
+          const isRegistrationTextAnswer = await this.isUserInfoTextStep(
             senderId,
           );
           console.log('isRegistrationTextAnswer : ', isRegistrationTextAnswer);
 
           if (isRegistrationTextAnswer && !isReply && !isStart) {
-            await this.registrationFlow(
+            await this.userInfoFlow(
               `${isRegistrationTextAnswer}-${currentChange?.message?.text}`,
               senderId,
             );

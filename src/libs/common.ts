@@ -6,3 +6,4 @@ export enum UserSexEnum {
 
 export type UserSexType = 'male' | 'female' | 'none';
 export type SendMessageType = 'text' | 'image';
+export type UserInfoFlowType = 'registration' | 'resubmit';

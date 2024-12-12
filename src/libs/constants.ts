@@ -9,10 +9,13 @@ export const FB_GRAPH_BASE_URL = 'https://graph.facebook.com/v21.0/';
 export const IG_GRAPH_BASE_URL = 'https://graph.instagram.com/v21.0/';
 export const startAge = 16;
 
-export const registrationTextSteps = [
+export const userInfoTextSteps = [
   'registration:bio',
+  'resubmit:bio',
   'registration:location',
+  'resubmit:location',
   'registration:name',
+  'resubmit:name',
 ];
 
 const registrationAgeOptions: RegistrationPromptOption = {
@@ -100,7 +103,7 @@ export const templateButtons: Record<
     {
       type: 'postback',
       title: 'Resubmit your profile',
-      payload: 'resubmit',
+      payload: 'resubmit:init',
     },
     {
       type: 'postback',
@@ -118,6 +121,11 @@ export const templateButtons: Record<
       type: 'postback',
       title: 'Dislike',
       payload: 'scroll:dislike',
+    },
+    {
+      type: 'postback',
+      title: 'Menu',
+      payload: 'scroll:menu',
     },
   ],
 };

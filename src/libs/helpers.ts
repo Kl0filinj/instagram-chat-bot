@@ -1,4 +1,5 @@
 import * as cities from 'cities.json';
+import { UserInfoFlowType } from './common';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Fuse = require('fuse.js');
 
@@ -32,4 +33,10 @@ export const findCity = (input: string): string[] | string => {
     .sort((a, b) => (a.score || 1) - (b.score || 1))
     .slice(0, 5)
     .map((result) => result.item.name);
+};
+
+export const isUserInfoFlowType = (
+  value: string,
+): value is UserInfoFlowType => {
+  return value === 'registration' || value === 'resubmit';
 };
