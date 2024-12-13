@@ -2,7 +2,11 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { IG_GRAPH_BASE_URL } from '../constants';
 import { catchError, firstValueFrom, map } from 'rxjs';
-import { QuickReplyItemDto, SendTemplateDto } from '../dto';
+import {
+  IgUserProfileIfoDto,
+  QuickReplyItemDto,
+  SendTemplateDto,
+} from '../dto';
 import { SendMessageType } from '../common';
 
 @Injectable()
@@ -91,7 +95,7 @@ export class HttpRepository {
     }
   }
 
-  async sendTempalte(igId: string, payload: SendTemplateDto) {
+  async sendTemplate(igId: string, payload: SendTemplateDto) {
     const { title, subtitle, image_url, buttons } = payload;
 
     const url = `${IG_GRAPH_BASE_URL}${process.env.trial_IG_ACCOUNT_ID}/messages`;
@@ -131,10 +135,10 @@ export class HttpRepository {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),
       );
-      console.log('Text message sent successfully:', response.data);
+      console.log('Template sent successfully:', response.data);
     } catch (error) {
       console.error(
-        'Error sending Text message:',
+        'Error sending Template:',
         error.response?.data || error.message,
       );
     }
@@ -166,7 +170,7 @@ export class HttpRepository {
     return response;
   }
 
-  async getProfilePicture(igId: string) {
+  async getProfileInfo(igId: string): Promise<IgUserProfileIfoDto> {
     // const url =
     //   'https://www.instagram.com/api/v1/users/web_profile_info/?username=kl0filinj';
     // const url = 'https://i.instagram.com/api/v1/users/922129809859449/info/';
@@ -204,6 +208,9 @@ export class HttpRepository {
     //   profile_pic: string;
     // }
 
-    return response?.profile_pic;
+    return {
+      avatarUrl: response?.profile_pic ?? '', // TODO: Find cool plug
+      username: response?.username,
+    };
   }
 }

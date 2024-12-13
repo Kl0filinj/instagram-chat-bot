@@ -1,3 +1,4 @@
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { WebhooksService } from './webhooks.service';
 import {
   Controller,
@@ -18,6 +19,11 @@ export class WebhooksController {
   // test() {
   //   return this.webhooksService.test();
   // }
+
+  @Cron('0 0 */2 * *')
+  handleCron() {
+    return this.webhooksService.clearUsersActivity();
+  }
 
   @Get()
   verifyWebhook(

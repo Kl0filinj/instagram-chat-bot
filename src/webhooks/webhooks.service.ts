@@ -10,7 +10,7 @@ import {
   menuCmd,
   QuickReplyItemDto,
   RegistrationPayloadDto,
-  registrationPrompts,
+  createUserInfoPrompts,
   userInfoTextSteps,
   startAge,
   startCmd,
@@ -19,11 +19,13 @@ import {
   UserInfoFlowType,
   UserSexType,
   wrongReplyBaseMessage,
+  IG_BASE_URL,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 // TODO: RESUBMIT PROFILE FLOW - ✅ FIX ISSUE WItH WRONG CMD WHILE RESUBMITTING
-// TODO: LIKE NOTIFICATION SYSTEM
+// TODO: LIKE NOTIFICATION SYSTEM - ✅
+// TODO: VALIDATION REGISTER DATA (Length)
 // TODO: REPORT SYSTEM
 // TODO: CHECK SUBSCRIPTION FUNCTIONALITY
 // TODO: Improve algorithm with location (SIMPLE Version - done) - ✅
@@ -51,11 +53,7 @@ export class WebhooksService {
         return;
 
       default:
-        const targetUser = await this.prisma.user.findUnique({
-          where: { id: igId },
-        });
-        const isUserRegistered = !targetUser ? false : targetUser.isRegistered;
-        await this.wrongReply(igId, isUserRegistered);
+        await this.wrongReply(igId);
         return;
     }
   }
@@ -67,7 +65,7 @@ export class WebhooksService {
       },
     });
 
-    await this.httpRepository.sendTempalte(targetUser.id, {
+    await this.httpRepository.sendTemplate(targetUser.id, {
       title: `Name: ${targetUser.name}`,
       subtitle: `Age: ${targetUser.age}\nLocation: ${targetUser.city}\nAbout: ${targetUser.bio}`,
       image_url: targetUser.avatarUrl,
@@ -87,18 +85,31 @@ export class WebhooksService {
       return;
     }
 
-    if (targetUser && targetUser.isRegistered) {
-      await this.wrongReply(igId, targetUser.isRegistered);
-      return;
+    // if (targetUser && targetUser.isRegistered) {
+    //   await this.wrongReply(igId, targetUser.isRegistered);
+    //   return;
+    // }
+
+    // if (targetUser && !targetUser.isRegistered && targetUser.lastCmd) {
+    //   //* Sending last cmd to user
+    //   await userInfoPrompts[targetUser.lastCmd](this.httpRepository, igId);
+    //   return;
+    // }
+
+    if (targetUser && targetUser.lastCmd) {
+      const flowOrigin = targetUser.lastCmd.split(':')[0];
+
+      if (isUserInfoFlowType(flowOrigin)) {
+        const currentUserInfoPrompt = createUserInfoPrompts(flowOrigin);
+        await currentUserInfoPrompt[targetUser.lastCmd](
+          this.httpRepository,
+          igId,
+        );
+        return;
+      }
     }
 
-    if (targetUser && !targetUser.isRegistered && targetUser.lastCmd) {
-      //* Sending last cmd to user
-      await registrationPrompts[targetUser.lastCmd](this.httpRepository, igId);
-      return;
-    }
-
-    await this.wrongReply(igId, targetUser.isRegistered);
+    await this.wrongReply(igId);
     return;
   }
 
@@ -119,7 +130,7 @@ export class WebhooksService {
     }
 
     if (targetUser && targetUser.isRegistered) {
-      await this.wrongReply(igId, targetUser.isRegistered);
+      await this.wrongReply(igId);
       return;
     }
 
@@ -128,7 +139,7 @@ export class WebhooksService {
       return;
     }
 
-    await this.wrongReply(igId, targetUser.isRegistered);
+    await this.wrongReply(igId);
     return;
   }
 
@@ -176,12 +187,11 @@ export class WebhooksService {
       case 'scroll':
         await this.scrollFlow(payload, senderId);
         return;
+      case 'match':
+        await this.matchFlow(payload, senderId);
+        return;
       default:
-        const targetUser = await this.prisma.user.findUnique({
-          where: { id: senderId },
-        });
-        const isUserRegistered = !targetUser ? false : targetUser.isRegistered;
-        await this.wrongReply(payload, isUserRegistered);
+        await this.wrongReply(payload);
         return;
     }
   }
@@ -199,19 +209,6 @@ export class WebhooksService {
       await this.unpredictableError(igId);
       return;
     }
-
-    type FlowOptions = {
-      isRegistered: boolean;
-    };
-    const flowOptions: Record<UserInfoFlowType, FlowOptions> = {
-      registration: {
-        isRegistered: false,
-      },
-      resubmit: {
-        isRegistered: true,
-      },
-    };
-    const currentFlowOption: FlowOptions = flowOptions[flowOrigin];
 
     switch (userInfoFlow) {
       case 'resubmit:init':
@@ -247,7 +244,7 @@ export class WebhooksService {
         await this.nameStep(igId, userInfoValue);
         return;
       default:
-        await this.wrongReply(igId, currentFlowOption.isRegistered);
+        await this.wrongReply(igId);
         return;
     }
   }
@@ -266,12 +263,10 @@ export class WebhooksService {
       },
     );
 
-    await this.setLastStep(igId, `${flow}:age`);
-    await this.httpRepository.sendQuickReply(
-      igId,
-      'Lets create your personal card.\nHow old are you ?',
-      replyOptions,
-    );
+    const currentStepCmd = `${flow}:age`;
+    await this.setLastStep(igId, currentStepCmd);
+    const currentUserInfoPrompt = createUserInfoPrompts(flow);
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -300,17 +295,16 @@ export class WebhooksService {
       return;
     }
 
-    const sexStepOptions: { title: UserSexType; payload: string }[] = [
-      { title: 'male', payload: `${flow}:sex-male` },
-      { title: 'female', payload: `${flow}:sex-female` },
-      // { title: 'none', payload: 'registration:sex-none' },
-    ];
-    await this.setLastStep(igId, `${flow}:sex`);
-    await this.httpRepository.sendQuickReply(
-      igId,
-      'What gender are you ?',
-      sexStepOptions,
-    );
+    // const sexStepOptions: { title: UserSexType; payload: string }[] = [
+    //   { title: 'male', payload: `${flow}:sex-male` },
+    //   { title: 'female', payload: `${flow}:sex-female` },
+    //   // { title: 'none', payload: 'registration:sex-none' },
+    // ];
+    const currentStepCmd = `${flow}:sex`;
+    await this.setLastStep(igId, currentStepCmd);
+    const currentUserInfoPrompt = createUserInfoPrompts(flow);
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
   }
 
   private async sexStep(
@@ -333,17 +327,11 @@ export class WebhooksService {
       return;
     }
 
-    const sexInterestStepOptions: { title: UserSexType; payload: string }[] = [
-      { title: 'none', payload: `${flow}:sexInterest-none` },
-      { title: 'male', payload: `${flow}:sexInterest-male` },
-      { title: 'female', payload: `${flow}:sexInterest-female` },
-    ];
+    const currentStepCmd = `${flow}:sexInterest`;
     await this.setLastStep(igId, `${flow}:sexInterest`);
-    await this.httpRepository.sendQuickReply(
-      igId,
-      'Who are you interested in ?',
-      sexInterestStepOptions,
-    );
+    const currentUserInfoPrompt = createUserInfoPrompts(flow);
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
   }
 
   private async sexInterestStep(
@@ -366,12 +354,11 @@ export class WebhooksService {
       return;
     }
 
+    const currentStepCmd = `${flow}:bio`;
     await this.setLastStep(igId, `${flow}:bio`);
-    await this.httpRepository.sendMessage(
-      igId,
-      'Tell us about yourself. 1-3 short sentences',
-      'text',
-    );
+    const currentUserInfoPrompt = createUserInfoPrompts(flow);
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
   }
 
   private async bioStep(igId: string, bio: string, flow: UserInfoFlowType) {
@@ -390,12 +377,11 @@ export class WebhooksService {
       return;
     }
 
+    const currentStepCmd = `${flow}:location`;
     await this.setLastStep(igId, `${flow}:location`);
-    await this.httpRepository.sendMessage(
-      igId,
-      'Now specify your location',
-      'text',
-    );
+    const currentUserInfoPrompt = createUserInfoPrompts(flow);
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
   }
 
   private async locationStep(
@@ -430,18 +416,17 @@ export class WebhooksService {
       return;
     }
 
+    const currentStepCmd = `${flow}:name`;
     await this.setLastStep(igId, `${flow}:name`);
-    await this.httpRepository.sendMessage(
-      igId,
-      'Finally, what is your name ?',
-      'text',
-    );
+    const currentUserInfoPrompt = createUserInfoPrompts(flow);
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
   }
 
   private async nameStep(igId: string, name: string) {
     let user: UserEntity;
-    const profilePicture = await this.httpRepository.getProfilePicture(igId);
-    console.log('profilePicture : ', profilePicture);
+    const { avatarUrl } = await this.httpRepository.getProfileInfo(igId);
+    console.log('avatarUrl : ', avatarUrl);
 
     try {
       user = await this.prisma.user.update({
@@ -450,7 +435,7 @@ export class WebhooksService {
         },
         data: {
           name,
-          avatarUrl: profilePicture,
+          avatarUrl,
           isRegistered: true,
           lastCmd: null,
         },
@@ -461,7 +446,7 @@ export class WebhooksService {
       return;
     }
 
-    await this.httpRepository.sendTempalte(igId, {
+    await this.httpRepository.sendTemplate(igId, {
       title: 'Your info card',
       subtitle: `Name: ${user.name}\nAge: ${user.age}\nLocation: ${user.city}\nAbout: ${user.bio}`,
       image_url: user.avatarUrl,
@@ -506,6 +491,104 @@ export class WebhooksService {
     return false;
   }
 
+  private async matchFlow(flow: string, igId: string) {
+    const matchFlow = flow.split('-')[0];
+    const matchValue = flow.split('-')[1];
+
+    console.log('matchFlow : ', matchFlow);
+    console.log('matchValue : ', matchValue);
+
+    switch (matchFlow) {
+      case 'match:like':
+        await this.matchLike(igId, matchValue);
+        return;
+      case 'match:dislike':
+        await this.matchDislike(igId);
+        return;
+      // case 'scroll:report':
+      //   await this.handleReport(igId);
+      //   return;
+      default:
+        await this.wrongReply(igId);
+        return;
+    }
+  }
+
+  private async matchLike(igId: string, targetUserId: string) {
+    const ourUser = await this.prisma.user.update({
+      where: {
+        id: igId,
+      },
+      data: {
+        likedUsers: {
+          push: targetUserId,
+        },
+      },
+    });
+
+    const targetUser = await this.prisma.user.update({
+      where: {
+        id: targetUserId,
+      },
+      data: {
+        likedUsers: {
+          push: igId,
+        },
+      },
+    });
+
+    const { username: ourUserNickname } =
+      await this.httpRepository.getProfileInfo(ourUser.id);
+    const { username: targetUserNickname } =
+      await this.httpRepository.getProfileInfo(targetUser.id);
+
+    await this.httpRepository.sendTemplate(ourUser.id, {
+      title: `Enjoy your time with: ${targetUser.name} !`,
+      subtitle: '',
+      image_url: targetUser.avatarUrl,
+      buttons: [
+        {
+          type: 'web_url',
+          url: `${IG_BASE_URL}/${targetUserNickname}`,
+          title: `${targetUser.name}'s profile`,
+        },
+        {
+          type: 'postback',
+          payload: 'scroll:start',
+          title: 'Continue scrolling',
+        },
+      ],
+    });
+    await this.httpRepository.sendTemplate(targetUser.id, {
+      title: `You have a match with: ${ourUser.name} !`,
+      subtitle: '',
+      image_url: ourUser.avatarUrl,
+      buttons: [
+        {
+          type: 'web_url',
+          url: `${IG_BASE_URL}/${ourUserNickname}`,
+          title: `${ourUser.name}'s profile`,
+        },
+        {
+          type: 'postback',
+          payload: 'scroll:start',
+          title: 'Continue scrolling',
+        },
+      ],
+    });
+    return;
+  }
+
+  private async matchDislike(igId: string) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id: igId,
+      },
+    });
+    await this.scrollSendNextUser(targetUser);
+    return;
+  }
+
   private async scrollFlow(flow: string, igId: string) {
     const scrollFlow = flow.split('-')[0];
     const scrollValue = flow.split('-')[1];
@@ -526,8 +609,11 @@ export class WebhooksService {
       case 'scroll:menu':
         await this.handleMenu(igId);
         return;
+      // case 'scroll:report':
+      //   await this.handleReport(igId);
+      //   return;
       default:
-        await this.wrongReply(igId, true);
+        await this.wrongReply(igId);
         return;
     }
   }
@@ -540,10 +626,11 @@ export class WebhooksService {
     });
 
     await this.scrollSendNextUser(targetUser);
+    return;
   }
 
   private async scrollLike(igId: string, targetIgId: string) {
-    const targetUser = await this.prisma.user.update({
+    const ourUser = await this.prisma.user.update({
       where: {
         id: igId,
       },
@@ -553,10 +640,25 @@ export class WebhooksService {
         },
       },
     });
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id: targetIgId,
+      },
+    });
 
-    //* USER THAT WAS Liked gets an message about it
-    // TODO: Add it here
-    await this.scrollSendNextUser(targetUser);
+    if (!targetUser.rejectedUsers.includes(ourUser.id)) {
+      await this.httpRepository.sendTemplate(targetIgId, {
+        title: `Someone liked you ❤️`,
+        subtitle: `Name: ${ourUser.name}\nAge: ${ourUser.age}\nLocation: ${ourUser.city}\nAbout: ${ourUser.bio}`,
+        image_url: ourUser.avatarUrl,
+        buttons: templateButtons.match.map((item) => ({
+          ...item,
+          payload: `${item.payload}-${ourUser.id}`,
+        })),
+      });
+    }
+
+    await this.scrollSendNextUser(ourUser);
   }
 
   private async scrollDislike(igId: string, targetIgId: string) {
@@ -616,7 +718,7 @@ export class WebhooksService {
       return;
     }
 
-    await this.httpRepository.sendTempalte(targetUser.id, {
+    await this.httpRepository.sendTemplate(targetUser.id, {
       title: `Name: ${nextUser.name}`,
       subtitle: `Age: ${nextUser.age}\nLocation: ${nextUser.city}\nAbout: ${nextUser.bio}`,
       image_url: nextUser.avatarUrl,
@@ -625,23 +727,46 @@ export class WebhooksService {
         payload: `${item.payload}-${nextUser.id}`,
       })),
     });
+    return;
   }
 
-  async wrongReply(igId: string, isRegistered: boolean) {
-    const unregisteredUserCmdsPreset = `${startCmd}
-    ${continueCmd}`;
+  async wrongReply(igId: string) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id: igId,
+      },
+    });
+
+    if (targetUser && targetUser.lastCmd) {
+      const flowOrigin = targetUser.lastCmd.split(':')[0];
+      console.log('flowOrigin : ', flowOrigin);
+
+      if (isUserInfoFlowType(flowOrigin)) {
+        const currentUserInfoPrompt = createUserInfoPrompts(flowOrigin);
+        await currentUserInfoPrompt[targetUser.lastCmd](
+          this.httpRepository,
+          igId,
+        );
+        return;
+      }
+    }
+
+    const unregisteredUserCmdsPreset = `${startCmd}\n${continueCmd}`;
     const registeredUserCmdsPreset = menuCmd;
 
-    const currentCmdsPreset = isRegistered
-      ? registeredUserCmdsPreset
-      : unregisteredUserCmdsPreset;
-    const wrongReplyMessage = `${wrongReplyBaseMessage}
-    ${currentCmdsPreset}`;
+    const currentCmdsPreset =
+      targetUser?.isRegistered ?? false
+        ? registeredUserCmdsPreset
+        : unregisteredUserCmdsPreset;
+    const wrongReplyMessage = `${wrongReplyBaseMessage}\n\n${currentCmdsPreset}`;
     await this.httpRepository.sendMessage(igId, wrongReplyMessage, 'text');
     return;
   }
 
   async unpredictableError(igId: string) {
+    console.log('!WARNING! - !WARNING! - !WARNING!');
+    console.log('UNPREDICTABLE ERROR WITH USER ', igId);
+
     await this.httpRepository.sendMessage(
       igId,
       'An unpredictable error occurred, contact support@trial2024.com',
@@ -745,17 +870,31 @@ export class WebhooksService {
             return;
           }
 
-          const targetUser = await this.prisma.user.findUnique({
-            where: { id: senderId },
-          });
-          const isUserRegistered = !targetUser
-            ? false
-            : targetUser.isRegistered;
-          console.log('isUserRegistered : ', isUserRegistered);
-          await this.wrongReply(senderId, isUserRegistered);
+          await this.wrongReply(senderId);
           return;
         }
       }
     }
   }
+
+  //#region CRON FNC
+  async clearUsersActivity() {
+    try {
+      await this.prisma.user.updateMany({
+        where: {},
+        data: {
+          rejectedUsers: {
+            set: [],
+          },
+          likedUsers: {
+            set: [],
+          },
+        },
+      });
+    } catch (error) {
+      // TODO: TG CHAT MESSAGE
+    }
+    return;
+  }
+  //#endregion
 }

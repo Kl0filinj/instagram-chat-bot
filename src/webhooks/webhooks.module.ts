@@ -3,9 +3,10 @@ import { WebhooksService } from './webhooks.service';
 import { WebhooksController } from './webhooks.controller';
 import { HttpModule } from '@nestjs/axios';
 import { HttpRepository } from '@libs';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, ScheduleModule.forRoot()],
   controllers: [WebhooksController],
   providers: [WebhooksService, HttpRepository],
 })

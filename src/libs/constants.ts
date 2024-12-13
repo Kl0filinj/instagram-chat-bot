@@ -1,3 +1,4 @@
+import { UserInfoFlowType } from './common';
 import {
   QuickReplyItemDto,
   QuickReplyTemplateItemDto,
@@ -7,6 +8,7 @@ import { HttpRepository } from './repositories';
 
 export const FB_GRAPH_BASE_URL = 'https://graph.facebook.com/v21.0/';
 export const IG_GRAPH_BASE_URL = 'https://graph.instagram.com/v21.0/';
+export const IG_BASE_URL = 'https://www.instagram.com';
 export const startAge = 16;
 
 export const userInfoTextSteps = [
@@ -18,80 +20,83 @@ export const userInfoTextSteps = [
   'resubmit:name',
 ];
 
-const registrationAgeOptions: RegistrationPromptOption = {
-  options: Array.from({ length: 13 }, (_, index) => {
-    const currentNumber = index + startAge + 1;
+const userInfoAgeOptions = (
+  flow: UserInfoFlowType,
+): RegistrationPromptOption => {
+  const text = flow === 'registration' ? 'create' : 'resubmit';
+  return {
+    options: Array.from({ length: 13 }, (_, index) => {
+      const currentNumber = index + startAge + 1;
 
-    return {
-      title: currentNumber.toString(),
-      payload: `registration:age-${currentNumber}`,
-    };
-  }),
-  message: 'Lets create your personal card.\nHow old are you ?',
+      return {
+        title: currentNumber.toString(),
+        payload: `${flow}:age-${currentNumber}`,
+      };
+    }),
+    message: `Lets ${text} your personal card.\nHow old are you ?`,
+  };
 };
 
-const registrationSexOptions: RegistrationPromptOption = {
+const userInfoSexOptions = (
+  flow: UserInfoFlowType,
+): RegistrationPromptOption => ({
   options: [
-    { title: 'male', payload: 'registration:sex-male' },
-    { title: 'female', payload: 'registration:sex-female' },
-    // { title: 'none', payload: 'registration:sex-none' },
+    { title: 'Male', payload: `${flow}:sex-male` },
+    { title: 'Female', payload: `${flow}:sex-female` },
+    // { title: 'none', payload: `${flow}:sex-none` },
   ],
-  message: 'Tell us about yourself. 1-3 short sentences',
-};
+  message: 'What gender are you ?',
+});
 
-const registrationSexInterestOptions: RegistrationPromptOption = {
+const userInfoSexInterestOptions = (
+  flow: UserInfoFlowType,
+): RegistrationPromptOption => ({
   options: [
-    { title: 'none', payload: 'registration:sex-none' },
-    { title: 'male', payload: 'registration:sex-male' },
-    { title: 'female', payload: 'registration:sex-female' },
+    { title: 'No Metter', payload: `${flow}:sexInterest-none` },
+    { title: 'Male', payload: `${flow}:sexInterest-male` },
+    { title: 'Female', payload: `${flow}:sexInterest-female` },
   ],
   message: 'Who are you interested in ?',
-};
+});
 
-const registrationBioOptions: RegistrationPromptOption = {
+const userInfoBioOptions: RegistrationPromptOption = {
   message: 'Tell us about yourself. 1-3 short sentences',
 };
 
-const registrationLocationOptions: RegistrationPromptOption = {
+const userInfoLocationOptions: RegistrationPromptOption = {
   message: 'Now specify your location',
 };
 
-const registrationNameOptions: RegistrationPromptOption = {
+const userInfoNameOptions: RegistrationPromptOption = {
   message: 'Finally, what is your name ?',
 };
 
-export const registrationPrompts: Record<
-  string,
-  (httpRepo: HttpRepository, igId: string) => Promise<any>
-> = {
-  'registration:age': async (httpRepo: HttpRepository, igId: string) =>
-    httpRepo.sendQuickReply(
-      igId,
-      registrationAgeOptions.message,
-      registrationAgeOptions.options,
-    ),
-  'registration:sex': async (httpRepo: HttpRepository, igId: string) =>
-    httpRepo.sendQuickReply(
-      igId,
-      registrationSexOptions.message,
-      registrationSexOptions.options,
-    ),
-  'registration:sexInterest': async (httpRepo: HttpRepository, igId: string) =>
-    httpRepo.sendQuickReply(
-      igId,
-      registrationSexInterestOptions.message,
-      registrationSexInterestOptions.options,
-    ),
-  'registration:bio': async (httpRepo: HttpRepository, igId: string) =>
-    httpRepo.sendMessage(igId, registrationBioOptions.message, 'text'),
-  'registration:location': async (httpRepo: HttpRepository, igId: string) =>
-    httpRepo.sendMessage(igId, registrationLocationOptions.message, 'text'),
-  'registration:name': async (httpRepo: HttpRepository, igId: string) =>
-    httpRepo.sendMessage(igId, registrationNameOptions.message, 'text'),
-};
+type PromptFunction = (httpRepo: HttpRepository, igId: string) => Promise<any>;
+export const createUserInfoPrompts = (
+  prefix: UserInfoFlowType,
+): Record<string, PromptFunction> => ({
+  [`${prefix}:age`]: async (httpRepo, igId) => {
+    const options = userInfoAgeOptions(prefix);
+    return httpRepo.sendQuickReply(igId, options.message, options.options);
+  },
+  [`${prefix}:sex`]: async (httpRepo, igId) => {
+    const options = userInfoSexOptions(prefix);
+    return httpRepo.sendQuickReply(igId, options.message, options.options);
+  },
+  [`${prefix}:sexInterest`]: async (httpRepo, igId) => {
+    const options = userInfoSexInterestOptions(prefix);
+    return httpRepo.sendQuickReply(igId, options.message, options.options);
+  },
+  [`${prefix}:bio`]: async (httpRepo, igId) =>
+    httpRepo.sendMessage(igId, userInfoBioOptions.message, 'text'),
+  [`${prefix}:location`]: async (httpRepo, igId) =>
+    httpRepo.sendMessage(igId, userInfoLocationOptions.message, 'text'),
+  [`${prefix}:name`]: async (httpRepo, igId) =>
+    httpRepo.sendMessage(igId, userInfoNameOptions.message, 'text'),
+});
 
 export const templateButtons: Record<
-  'hub' | 'scroll',
+  'hub' | 'scroll' | 'match',
   QuickReplyTemplateItemDto[]
 > = {
   hub: [
@@ -102,7 +107,7 @@ export const templateButtons: Record<
     },
     {
       type: 'postback',
-      title: 'Resubmit your profile',
+      title: 'Resubmit my profile',
       payload: 'resubmit:init',
     },
     {
@@ -112,20 +117,37 @@ export const templateButtons: Record<
     },
   ],
   scroll: [
-    {
-      type: 'postback',
-      title: 'Like',
-      payload: 'scroll:like',
-    },
-    {
-      type: 'postback',
-      title: 'Dislike',
-      payload: 'scroll:dislike',
-    },
+    // {
+    //   type: 'postback',
+    //   title: 'Report user',
+    //   payload: 'scroll:report',
+    // },
     {
       type: 'postback',
       title: 'Menu',
       payload: 'scroll:menu',
+    },
+    {
+      type: 'postback',
+      title: '👍 Like',
+      payload: 'scroll:like',
+    },
+    {
+      type: 'postback',
+      title: '👎 Dislike',
+      payload: 'scroll:dislike',
+    },
+  ],
+  match: [
+    {
+      type: 'postback',
+      title: 'Like',
+      payload: 'match:like',
+    },
+    {
+      type: 'postback',
+      title: 'Dislike',
+      payload: 'match:dislike',
     },
   ],
 };

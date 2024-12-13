@@ -32,8 +32,11 @@ export class QuickReplyItemDto extends QuickReplyDto {
   content_type?: string;
 }
 
-export class QuickReplyTemplateItemDto extends QuickReplyDto {
-  type: 'postback';
+export class QuickReplyTemplateItemDto {
+  title: string;
+  type: 'postback' | 'web_url';
+  url?: string;
+  payload?: string;
 }
 
 export class RegistrationPayloadDto<T> {
@@ -51,4 +54,9 @@ export class SendTemplateDto {
   image_url: string;
   subtitle: string;
   buttons: QuickReplyTemplateItemDto[];
+}
+
+export class IgUserProfileIfoDto {
+  avatarUrl: string;
+  username: string;
 }

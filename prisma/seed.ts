@@ -6,7 +6,7 @@ async function main() {
   await prisma.user.deleteMany({
     where: {
       id: {
-        not: '922129809859449',
+        notIn: ['922129809859449', '1300318520990220'],
       },
     },
   });
@@ -33,7 +33,7 @@ async function main() {
   };
 
   await prisma.user.createMany({
-    data: generateMockUsers(1000),
+    data: generateMockUsers(20),
   });
 }
 
