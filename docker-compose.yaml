@@ -14,5 +14,11 @@ services:
       - 5432:5432
     volumes:
       - main_db:/var/lib/postgresql/data
+  redis:
+    image: redis:7.2.1-alpine
+    container_name: 'ichat_bot_redis'
+    ports:
+      - 6380:6379
 volumes:
   main_db:
+  redis:

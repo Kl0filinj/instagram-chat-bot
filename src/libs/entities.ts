@@ -16,5 +16,6 @@ export class UserEntity {
   isRegistered: boolean;
   createdAt: Date;
   lastCmd: string | null;
+  localizationLang: string;
   repotrs?: any[];
 }

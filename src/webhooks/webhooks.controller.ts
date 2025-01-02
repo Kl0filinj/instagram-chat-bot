@@ -58,7 +58,6 @@ export class WebhooksController {
     // }
     console.log('verifySignature PASSED !@@! : ');
 
-    await this.webhooksService.handleIncomingWebhook(payload);
-    return;
+    return this.webhooksService.handleIncomingWebhook(payload);
   }
 }

@@ -1,0 +1,51 @@
+{
+    "CMD": {
+        "start": "start - Registrierung für neue Benutzer",
+        "continue": "continue - Fortsetzung des laufenden Prozesses",
+        "hub": "menu - Zum Hauptmenü"
+    },
+    "ERRORS": {
+        "wrong_reply": "Falscher Befehl. Verfügbare Befehle",
+        "unpredictable_error": "Ein unvorhersehbarer Fehler ist aufgetreten, wenden Sie sich an support@trial2024.com"
+    },
+    "REGISTRATION": {
+        "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden?",
+        "age": "Wie alt sind Sie ?",
+        "sex": "Wählen Sie jetzt Ihr Geschlecht",
+        "sex_interest": "Nach wem suchen Sie ?",
+        "bio": "Erzählen Sie uns ein wenig über sich und wen Sie suchen",
+        "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben)?",
+        "location_available": "Verfügbare Städte",
+        "name": "Wie ist Ihr Name?"
+    },
+    "SCROLL": {
+        "menu": "📋 Menü",
+        "like": "👍 Like",
+        "aside_like": "Jemand mochte Sie ❤️",
+        "dislike": "👎 Dislike",
+        "no_users": "Es tut uns leid, aber wir haben keine aktiven Nutzer mehr in der {city}"
+    },
+    "MENU": {
+        "start": "Blättern beginnen",
+        "resubmit": "Profil erneut einreichen",
+        "deactivate": "Profil deaktivieren"
+    },
+    "MATCH": {
+        "like": "💞 Like",
+        "dislike": "💔 Dislike",
+        "report": "⚠️ Benutzer melden",
+        "target_user_match": "Genießen Sie Ihre Zeit mit: {name} !",
+        "other_user_match": "Sie haben eine Übereinstimmung mit: {name} !"
+    },
+    "REPORT": {
+        "describe": "Beschreiben Sie Ihren Bericht in 1-3 Sätzen",
+        "sent_success": "Ihr Bericht wurde erfolgreich gesendet !"
+    },
+    "CARD_INFO": {
+        "name": "Name",
+        "age": "Alter",
+        "location": "Wohnort",
+        "about": "Über",
+        "title": "Ihre Infokarte"
+    }
+}

@@ -37,8 +37,11 @@
     "class-validator": "^0.14.1",
     "crypto": "^1.0.1",
     "fuse.js": "^7.0.0",
+    "nestjs-i18n": "^10.5.0",
     "ngrok": "^5.0.0-beta.2",
+    "node-telegram-bot-api": "^0.66.0",
     "prisma": "^5.22.0",
+    "redis": "^4.7.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.2.0"
   },

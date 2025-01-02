@@ -40,3 +40,17 @@ export const isUserInfoFlowType = (
 ): value is UserInfoFlowType => {
   return value === 'registration' || value === 'resubmit';
 };
+
+export const tryCatchPrismaWrapper = async <T>(
+  arg: any,
+  alternative: any,
+): Promise<T> => {
+  let result: T;
+  try {
+    result = await arg;
+  } catch (err) {
+    return alternative;
+  }
+
+  return result;
+};

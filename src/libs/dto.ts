@@ -1,3 +1,6 @@
+import { I18nService } from 'nestjs-i18n';
+import { UserInfoFlowType } from './common';
+
 export class MessageDto {
   mid: string;
   text: string;
@@ -59,4 +62,13 @@ export class SendTemplateDto {
 export class IgUserProfileIfoDto {
   avatarUrl: string;
   username: string;
+}
+
+export class TranslateDto {
+  i18n: I18nService;
+  lang: string;
+}
+
+export class UserInfoLanguageOptionsDto extends TranslateDto {
+  flow: UserInfoFlowType;
 }

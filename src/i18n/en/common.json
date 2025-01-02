@@ -1,0 +1,51 @@
+{
+    "CMD": {
+        "start": "start - Registration for new users",
+        "continue": "continue - Continue current process",
+        "hub": "menu - Go to main menu"
+    },
+    "ERRORS": {
+        "wrong_reply": "Wrong command. Available commands:",
+        "unpredictable_error": "An unpredictable error occurred, contact support@trial2024.com"
+    },
+    "REGISTRATION": {
+        "language": "Lets get your personal card done. What languange do you prefer to use ?",
+        "age": "How old are you ?",
+        "sex": "Now pick your gender",
+        "sex_interest": "Who are you looking for ?",
+        "bio": "Tell us a bit about yourself and who you’re looking for",
+        "location": "Which city are you in (Type city name on EN) ?",
+        "location_available": "Available cities",
+        "name": "What’s your name ?"
+    },
+    "SCROLL": {
+        "menu": "📋 Menu",
+        "like": "👍 Like",
+        "aside_like": "Someone liked you ❤️",
+        "dislike": "👎 Dislike",
+        "no_users": "Sorry, but we've run out of active users in the {city}"
+    },
+    "MENU": {
+        "start": "Start scrolling",
+        "resubmit": "Resubmit profile",
+        "deactivate": "Deactivate profile"
+    },
+    "MATCH": {
+        "like": "💞 Like",
+        "dislike": "💔 Dislike",
+        "report": "⚠️ Report user",
+        "target_user_match": "Enjoy your time with: {name} !",
+        "other_user_match": "You have a match with: {name} !"
+    },
+    "REPORT": {
+        "describe": "Describe your report in a 1-3 sentences",
+        "sent_success": "Your report was successfully sent !"
+    },
+    "CARD_INFO": {
+        "name": "Name",
+        "age": "Age",
+        "location": "Location",
+        "about": "About",
+        "title": "Your info card"
+    }
+}

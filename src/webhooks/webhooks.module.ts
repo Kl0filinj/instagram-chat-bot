@@ -2,12 +2,26 @@ import { Module } from '@nestjs/common';
 import { WebhooksService } from './webhooks.service';
 import { WebhooksController } from './webhooks.controller';
 import { HttpModule } from '@nestjs/axios';
-import { HttpRepository } from '@libs';
+import { HttpRepository, RedisModule, RedisRepository } from '@libs';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+import * as path from 'path';
 
 @Module({
-  imports: [HttpModule, ScheduleModule.forRoot()],
+  imports: [
+    HttpModule,
+    ScheduleModule.forRoot(),
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loaderOptions: {
+        path: path.join(__dirname, '/../i18n/'),
+        watch: true,
+      },
+      resolvers: [AcceptLanguageResolver],
+    }),
+    RedisModule.forRoot(process.env.REDIS_URL),
+  ],
   controllers: [WebhooksController],
-  providers: [WebhooksService, HttpRepository],
+  providers: [WebhooksService, HttpRepository, RedisRepository],
 })
 export class WebhooksModule {}
