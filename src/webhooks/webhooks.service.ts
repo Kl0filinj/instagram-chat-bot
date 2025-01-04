@@ -22,6 +22,7 @@ import {
   createReportPrompts,
   textAnswersSteps,
   RedisRepository,
+  createDeactivateProfilePrompts,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -215,6 +216,9 @@ export class WebhooksService {
         return;
       case 'match':
         await this.matchFlow(payload, senderId);
+        return;
+      case 'deactivate':
+        await this.deactivateProfileFlow(payload, senderId);
         return;
       case 'report':
         await this.reportFlow(payload, senderId);
@@ -584,6 +588,91 @@ export class WebhooksService {
     return false;
   }
 
+  private async deactivateProfileFlow(flow: string, igId: string) {
+    const deactivateProfileFlow = flow.split('-')[0];
+    const deactivateProfileValue = flow.split('-')[1];
+
+    console.log('deactivateProfileFlow : ', deactivateProfileFlow);
+    console.log('deactivateProfileValue : ', deactivateProfileValue);
+
+    switch (deactivateProfileFlow) {
+      case 'deactivate:init':
+        await this.deactivateProfileInit(igId);
+        return;
+      case 'deactivate:execute':
+        await this.deactivateProfileExecute(igId);
+        return;
+      case 'deactivate:cancel':
+        await this.deactivateProfileCancel(igId);
+        return;
+      default:
+        await this.wrongReply(igId);
+        return;
+    }
+  }
+
+  private async deactivateProfileInit(igId: string) {
+    console.log('deactivateInitStep');
+
+    const localization = await this.defineUserLocalization(igId);
+    const currentStepCmd = 'deactivate:init';
+    await this.setLastStep(igId, currentStepCmd);
+    const currentdeactivatePrompt = createDeactivateProfilePrompts({
+      i18n: this.i18nService,
+      lang: localization,
+    });
+    await currentdeactivatePrompt[currentStepCmd](this.httpRepository, igId);
+    return;
+  }
+
+  private async deactivateProfileExecute(igId: string) {
+    let user: UserEntity;
+
+    try {
+      user = await this.prisma.user.update({
+        where: {
+          id: igId,
+        },
+        data: {
+          isActive: false,
+          lastCmd: null,
+        },
+      });
+    } catch (error) {
+      console.log('ERROR: deactivateProfileExecute PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
+    }
+
+    await this.httpRepository.sendMessage(
+      igId,
+      this.i18nService.t('common.DEACTIVATE.execute_success', {
+        lang: user.localizationLang,
+      }),
+      'text',
+    );
+    return;
+  }
+
+  private async deactivateProfileCancel(igId: string) {
+    try {
+      await this.prisma.user.update({
+        where: {
+          id: igId,
+        },
+        data: {
+          lastCmd: null,
+        },
+      });
+    } catch (error) {
+      console.log('ERROR: deactivateProfileCancel PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
+    }
+    await this.handleMenu(igId);
+    return;
+  }
+
   private async reportFlow(flow: string, igId: string) {
     const reportFlow = flow.split('-')[0];
     const reportValue = flow.split('-')[1];
@@ -882,6 +971,26 @@ export class WebhooksService {
   }
 
   private async scrollSendNextUser(targetUser: UserEntity) {
+    if (!targetUser.isActive) {
+      try {
+        await this.prisma.user.update({
+          where: {
+            id: targetUser.id,
+          },
+          data: {
+            isActive: true,
+          },
+        });
+      } catch (error) {
+        console.log(
+          'ERROR: scrollSendNextUser:set isActive:true PRISMA',
+          error?.message,
+        );
+        await this.unpredictableError(targetUser.id);
+        return;
+      }
+    }
+
     const ageOptions: Record<UserSexType, any> = {
       male: {
         minAgeLimit: targetUser.age - 2,
@@ -918,6 +1027,9 @@ export class WebhooksService {
         ...(targetUser.sexInterest !== 'none' && {
           sex: targetUser.sexInterest,
         }),
+        isBlocked: false,
+        isActive: true,
+        isRegistered: true,
       },
       orderBy: {
         age: 'desc',
@@ -986,14 +1098,29 @@ export class WebhooksService {
         return;
       }
 
-      // if (flowOrigin === 'report') {
-      //   const currentReportPrompt = createReportPrompts(flowOrigin);
-      //   await currentReportPrompt[targetUser.lastCmd](
-      //     this.httpRepository,
-      //     igId,
-      //   );
-      //   return;
-      // }
+      if (flowOrigin === 'report') {
+        const currentReportPrompt = createReportPrompts({
+          i18n: this.i18nService,
+          lang: targetUser.localizationLang,
+        });
+        await currentReportPrompt[targetUser.lastCmd](
+          this.httpRepository,
+          igId,
+        );
+        return;
+      }
+
+      if (flowOrigin === 'deactivate') {
+        const currentDeactivatePrompt = createDeactivateProfilePrompts({
+          i18n: this.i18nService,
+          lang: targetUser.localizationLang,
+        });
+        await currentDeactivatePrompt[targetUser.lastCmd](
+          this.httpRepository,
+          igId,
+        );
+        return;
+      }
     }
 
     const targetUserLocalization =
@@ -1005,10 +1132,7 @@ export class WebhooksService {
 
     const startCmd = this.i18nService.t('common.CMD.start', lang);
     const continueCmd = this.i18nService.t('common.CMD.continue', lang);
-    const registeredUserCmdsPreset = this.i18nService.t(
-      'common.CMD.menu',
-      lang,
-    );
+    const registeredUserCmdsPreset = this.i18nService.t('common.CMD.hub', lang);
     const unregisteredUserCmdsPreset = `${startCmd}\n${continueCmd}`;
 
     const currentCmdsPreset =
@@ -1047,6 +1171,7 @@ export class WebhooksService {
 
   async defineUserLocalization(igId: string) {
     const cachedLang = await this.redisRepo.getUserLocalizationLang(igId);
+    console.log('cachedLang : ', cachedLang);
 
     if (cachedLang) {
       return cachedLang;
@@ -1187,7 +1312,13 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      // TODO: TG CHAT MESSAGE
+      await this.telegramBot.sendMessage(
+        process.env.TG_CHAT_ID,
+        `⚠️⚠️⚠️\n${new Date().toISOString()}\nClear user activity function - !! FAILED !! `,
+        {
+          message_thread_id: 2,
+        },
+      );
     }
     return;
   }

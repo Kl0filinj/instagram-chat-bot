@@ -4,7 +4,8 @@ import { WebhooksController } from './webhooks.controller';
 import { HttpModule } from '@nestjs/axios';
 import { HttpRepository, RedisModule, RedisRepository } from '@libs';
 import { ScheduleModule } from '@nestjs/schedule';
-import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
+import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
+import { HelpersService } from './helpers/helpers.service';
 import * as path from 'path';
 
 @Module({
@@ -22,6 +23,6 @@ import * as path from 'path';
     RedisModule.forRoot(process.env.REDIS_URL),
   ],
   controllers: [WebhooksController],
-  providers: [WebhooksService, HttpRepository, RedisRepository],
+  providers: [WebhooksService, HttpRepository, RedisRepository, HelpersService],
 })
 export class WebhooksModule {}

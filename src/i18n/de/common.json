@@ -11,15 +11,24 @@
     "REGISTRATION": {
         "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden?",
         "age": "Wie alt sind Sie ?",
-        "sex": "Wählen Sie jetzt Ihr Geschlecht",
-        "sex_interest": "Nach wem suchen Sie ?",
+        "SEX": {
+            "message": "Wählen Sie jetzt Ihr Geschlecht",
+            "male": "Mann",
+            "female": "Frau"
+        },
+        "SEX_INTEREST": {
+            "message": "Nach wem suchen Sie ?",
+            "male": "Mann",
+            "female": "Frau",
+            "no_metter": "ohne Metrum"
+        },
         "bio": "Erzählen Sie uns ein wenig über sich und wen Sie suchen",
         "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben)?",
         "location_available": "Verfügbare Städte",
         "name": "Wie ist Ihr Name?"
     },
     "SCROLL": {
-        "menu": "📋 Menü",
+        "menu": "💤 Menü",
         "like": "👍 Like",
         "aside_like": "Jemand mochte Sie ❤️",
         "dislike": "👎 Dislike",
@@ -40,6 +49,12 @@
     "REPORT": {
         "describe": "Beschreiben Sie Ihren Bericht in 1-3 Sätzen",
         "sent_success": "Ihr Bericht wurde erfolgreich gesendet !"
+    },
+    "DEACTIVATE": {
+        "question": "Willst du wirklich aufhören zu suchen?\nIhr Profil wird deaktiviert sein, bis Sie mit der Suche beginnen",
+        "execute": "Ja, mein Profil deaktivieren",
+        "execute_success": "Ihr Profil wurde erfolgreich deaktiviert!",
+        "cancel": "Nein"
     },
     "CARD_INFO": {
         "name": "Name",

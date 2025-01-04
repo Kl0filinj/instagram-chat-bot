@@ -37,7 +37,7 @@ const userInfoLanguageOptions = ({
     { title: '🇺🇸 English', payload: `${flow}:language-en` },
     { title: '🇩🇪 German', payload: `${flow}:language-de` },
   ],
-  message: i18n.t('common.REGISTRATION.language', { lang: lang }),
+  message: i18n.t('common.REGISTRATION.language', { lang }),
 });
 
 const userInfoAgeOptions = ({
@@ -54,7 +54,7 @@ const userInfoAgeOptions = ({
         payload: `${flow}:age-${currentNumber}`,
       };
     }),
-    message: i18n.t('common.REGISTRATION.age', { lang: lang }),
+    message: i18n.t('common.REGISTRATION.age', { lang }),
   };
 };
 
@@ -64,11 +64,17 @@ const userInfoSexOptions = ({
   lang,
 }: UserInfoLanguageOptionsDto): RegistrationPromptOption => ({
   options: [
-    { title: 'Male', payload: `${flow}:sex-male` },
-    { title: 'Female', payload: `${flow}:sex-female` },
+    {
+      title: i18n.t('common.REGISTRATION.SEX.male', { lang }),
+      payload: `${flow}:sex-male`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.SEX.female', { lang }),
+      payload: `${flow}:sex-female`,
+    },
     // { title: 'none', payload: `${flow}:sex-none` },
   ],
-  message: i18n.t('common.REGISTRATION.sex', { lang: lang }),
+  message: i18n.t('common.REGISTRATION.SEX.message', { lang }),
 });
 
 const userInfoSexInterestOptions = ({
@@ -77,32 +83,41 @@ const userInfoSexInterestOptions = ({
   lang,
 }: UserInfoLanguageOptionsDto): RegistrationPromptOption => ({
   options: [
-    { title: 'No Metter', payload: `${flow}:sexInterest-none` },
-    { title: 'Male', payload: `${flow}:sexInterest-male` },
-    { title: 'Female', payload: `${flow}:sexInterest-female` },
+    {
+      title: i18n.t('common.REGISTRATION.SEX_INTEREST.no_metter', { lang }),
+      payload: `${flow}:sexInterest-none`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.SEX_INTEREST.male', { lang }),
+      payload: `${flow}:sexInterest-male`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.SEX_INTEREST.female', { lang }),
+      payload: `${flow}:sexInterest-female`,
+    },
   ],
-  message: i18n.t('common.REGISTRATION.sex_interest', { lang: lang }),
+  message: i18n.t('common.REGISTRATION.SEX_INTEREST.message', { lang }),
 });
 
 const userInfoBioOptions = ({
   i18n,
   lang,
 }: TranslateDto): RegistrationPromptOption => ({
-  message: i18n.t('common.REGISTRATION.bio', { lang: lang }),
+  message: i18n.t('common.REGISTRATION.bio', { lang }),
 });
 
 const userInfoLocationOptions = ({
   i18n,
   lang,
 }: TranslateDto): RegistrationPromptOption => ({
-  message: i18n.t('common.REGISTRATION.location', { lang: lang }),
+  message: i18n.t('common.REGISTRATION.location', { lang }),
 });
 
 const userInfoNameOptions = ({
   i18n,
   lang,
 }: TranslateDto): RegistrationPromptOption => ({
-  message: i18n.t('common.REGISTRATION.name', { lang: lang }),
+  message: i18n.t('common.REGISTRATION.name', { lang }),
 });
 
 type PromptFunction = (httpRepo: HttpRepository, igId: string) => Promise<any>;
@@ -139,15 +154,45 @@ export const createUserInfoPrompts = (
     httpRepo.sendMessage(igId, userInfoNameOptions(dto).message, 'text'),
 });
 
-const reportOptions: RegistrationPromptOption = {
-  message: 'Your report was successfully sent !',
-};
+//TODO: Check usage of this 2 elements (reportOptions, createReportPrompts)
+const reportOptions = ({
+  i18n,
+  lang,
+}: TranslateDto): RegistrationPromptOption => ({
+  message: i18n.t('common.REPORT.name', { lang }),
+});
 
 export const createReportPrompts = (
-  prefix: 'report',
+  dto: TranslateDto,
 ): Record<string, PromptFunction> => ({
-  [`${prefix}:send`]: async (httpRepo, igId) =>
-    httpRepo.sendMessage(igId, reportOptions.message, 'text'),
+  ['report:send']: async (httpRepo, igId) =>
+    httpRepo.sendMessage(igId, reportOptions(dto).message, 'text'),
+});
+
+const deactivateProfileInitOptions = ({
+  i18n,
+  lang,
+}: TranslateDto): RegistrationPromptOption => ({
+  options: [
+    {
+      title: i18n.t('common.DEACTIVATE.execute', { lang }),
+      payload: 'deactivate:execute',
+    },
+    {
+      title: i18n.t('common.DEACTIVATE.cancel', { lang }),
+      payload: 'deactivate:cancel',
+    },
+  ],
+  message: i18n.t('common.DEACTIVATE.message', { lang }),
+});
+
+export const createDeactivateProfilePrompts = (
+  dto: TranslateDto,
+): Record<string, PromptFunction> => ({
+  ['deactivate:init']: async (httpRepo, igId) => {
+    const options = deactivateProfileInitOptions(dto);
+    return httpRepo.sendQuickReply(igId, options.message, options.options);
+  },
 });
 
 export const templateButtons = ({
@@ -171,7 +216,7 @@ export const templateButtons = ({
     {
       type: 'postback',
       title: i18n.t('common.MENU.deactivate', { lang }),
-      payload: 'deactivate',
+      payload: 'deactivate:init',
     },
   ],
   scroll: [

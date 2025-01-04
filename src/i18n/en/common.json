@@ -11,15 +11,24 @@
     "REGISTRATION": {
         "language": "Lets get your personal card done. What languange do you prefer to use ?",
         "age": "How old are you ?",
-        "sex": "Now pick your gender",
-        "sex_interest": "Who are you looking for ?",
+        "SEX": {
+            "message": "Now pick your gender",
+            "male": "Male",
+            "female": "Female"
+        },
+        "SEX_INTEREST": {
+            "message": "Who are you looking for ?",
+            "male": "Male",
+            "female": "Female",
+            "no_metter": "No Metter"
+        },
         "bio": "Tell us a bit about yourself and who you’re looking for",
         "location": "Which city are you in (Type city name on EN) ?",
         "location_available": "Available cities",
         "name": "What’s your name ?"
     },
     "SCROLL": {
-        "menu": "📋 Menu",
+        "menu": "💤 Menu",
         "like": "👍 Like",
         "aside_like": "Someone liked you ❤️",
         "dislike": "👎 Dislike",
@@ -40,6 +49,12 @@
     "REPORT": {
         "describe": "Describe your report in a 1-3 sentences",
         "sent_success": "Your report was successfully sent !"
+    },
+    "DEACTIVATE": {
+        "message": "Do you really want to stop searching ?\nYour profile gonna be disabled until you start searching",
+        "execute": "Yes, deactivate my profile",
+        "execute_success": "Your profile was successfully deactivated !",
+        "cancel": "No"
     },
     "CARD_INFO": {
         "name": "Name",
