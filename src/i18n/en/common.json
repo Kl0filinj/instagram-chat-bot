@@ -6,7 +6,9 @@
     },
     "ERRORS": {
         "wrong_reply": "Wrong command. Available commands:",
-        "unpredictable_error": "An unpredictable error occurred, contact support@trial2024.com"
+        "unpredictable_error": "An unpredictable error occurred, contact support@trial2024.com",
+        "max_avatar_file_size": "The file you uploaded exceeds the maximum allowed size of {maxSize} MB.\nPlease upload a smaller file and try again",
+        "wrong_avatar_file_extension": "The file you uploaded is not a valid image format.\nPlease upload a file in one of the following formats: {formats}"
     },
     "REGISTRATION": {
         "language": "Lets get your personal card done. What languange do you prefer to use ?",
@@ -23,6 +25,7 @@
             "no_metter": "No Metter"
         },
         "bio": "Tell us a bit about yourself and who you’re looking for",
+        "avatar": "Upload you avatar picture\nSize of the picture have to be less than {maxSize} MB",
         "location": "Which city are you in (Type city name on EN) ?",
         "location_available": "Available cities",
         "name": "What’s your name ?"

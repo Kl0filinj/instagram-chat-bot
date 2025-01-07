@@ -72,3 +72,7 @@ export class TranslateDto {
 export class UserInfoLanguageOptionsDto extends TranslateDto {
   flow: UserInfoFlowType;
 }
+
+export class AvatarFileValidationPipeDto extends TranslateDto {
+  file: Express.Multer.File;
+}

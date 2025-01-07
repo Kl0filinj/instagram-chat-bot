@@ -1,5 +1,3 @@
-import { I18nService } from 'nestjs-i18n';
-import { UserInfoFlowType } from './common';
 import {
   QuickReplyItemDto,
   QuickReplyTemplateItemDto,
@@ -15,6 +13,9 @@ export const IG_GRAPH_BASE_URL = 'https://graph.instagram.com/v21.0/';
 export const IG_BASE_URL = 'https://www.instagram.com';
 export const startAge = 16;
 
+export const allowedAvatarFileFormats = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+export const maxAvatarFileSize = 2097152; // in bytes
+
 export type RedisClient = RedisClientType;
 export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 
@@ -27,6 +28,8 @@ export const textAnswersSteps = [
   'resubmit:name',
   'report:send',
 ];
+
+export const imageAnswersSteps = ['registration:avatar', 'resubmit:avatar'];
 
 const userInfoLanguageOptions = ({
   flow,
@@ -106,6 +109,16 @@ const userInfoBioOptions = ({
   message: i18n.t('common.REGISTRATION.bio', { lang }),
 });
 
+const userInfoAvatarOptions = ({
+  i18n,
+  lang,
+}: TranslateDto): RegistrationPromptOption => ({
+  message: i18n.t('common.REGISTRATION.avatar', {
+    lang,
+    args: { maxSize: '2' },
+  }),
+});
+
 const userInfoLocationOptions = ({
   i18n,
   lang,
@@ -146,6 +159,9 @@ export const createUserInfoPrompts = (
 
   [`${dto.flow}:bio`]: async (httpRepo, igId) =>
     httpRepo.sendMessage(igId, userInfoBioOptions(dto).message, 'text'),
+
+  [`${dto.flow}:avatar`]: async (httpRepo, igId) =>
+    httpRepo.sendMessage(igId, userInfoAvatarOptions(dto).message, 'text'),
 
   [`${dto.flow}:location`]: async (httpRepo, igId) =>
     httpRepo.sendMessage(igId, userInfoLocationOptions(dto).message, 'text'),

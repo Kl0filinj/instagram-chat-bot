@@ -7,6 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import { HelpersService } from './helpers/helpers.service';
 import * as path from 'path';
+import { S3Service } from 'src/s3/s3.service';
 
 @Module({
   imports: [
@@ -23,6 +24,12 @@ import * as path from 'path';
     RedisModule.forRoot(process.env.REDIS_URL),
   ],
   controllers: [WebhooksController],
-  providers: [WebhooksService, HttpRepository, RedisRepository, HelpersService],
+  providers: [
+    S3Service,
+    WebhooksService,
+    HttpRepository,
+    RedisRepository,
+    HelpersService,
+  ],
 })
 export class WebhooksModule {}

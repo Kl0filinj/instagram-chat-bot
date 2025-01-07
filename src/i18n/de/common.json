@@ -6,7 +6,9 @@
     },
     "ERRORS": {
         "wrong_reply": "Falscher Befehl. Verfügbare Befehle",
-        "unpredictable_error": "Ein unvorhersehbarer Fehler ist aufgetreten, wenden Sie sich an support@trial2024.com"
+        "unpredictable_error": "Ein unvorhersehbarer Fehler ist aufgetreten, wenden Sie sich an support@trial2024.com",
+        "max_file_size": "Die hochgeladene Datei überschreitet die maximale zulässige Größe von {maxSize} MB.\nBitte laden Sie eine kleinere Datei hoch und versuchen Sie es erneut",
+        "wrong_avatar_file_extension": "Die hochgeladene Datei ist kein gültiges Bildformat.\nBitte laden Sie eine Datei in einem der folgenden Formate hoch: {formats}"
     },
     "REGISTRATION": {
         "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden?",
@@ -23,6 +25,7 @@
             "no_metter": "ohne Metrum"
         },
         "bio": "Erzählen Sie uns ein wenig über sich und wen Sie suchen",
+        "avatar": "Laden Sie Ihren Avatar hoch.\nDie Bildgröße muss weniger als {maxSize} MB betragen.",
         "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben)?",
         "location_available": "Verfügbare Städte",
         "name": "Wie ist Ihr Name?"

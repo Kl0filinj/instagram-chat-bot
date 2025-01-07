@@ -23,9 +23,12 @@ import {
   textAnswersSteps,
   RedisRepository,
   createDeactivateProfilePrompts,
+  imageAnswersSteps,
+  avatarFileValidationPipe,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
+import { S3Service } from 'src/s3/s3.service';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -49,6 +52,7 @@ export class WebhooksService {
     private readonly httpRepository: HttpRepository,
     private readonly i18nService: I18nService,
     private readonly redisRepo: RedisRepository,
+    private readonly s3Service: S3Service,
   ) {}
 
   async handleCommand(igId: string, cmd: string) {
@@ -77,6 +81,8 @@ export class WebhooksService {
         id: igId,
       },
     });
+    const avatarUrl = await this.s3Service.getFileUrl(targetUser.avatarUrl);
+    console.log('avatarUrl : ', avatarUrl);
 
     // TODO: Find all places like this and make a reusable fnc for it
     const languageT = { lang: targetUser.localizationLang };
@@ -91,7 +97,7 @@ export class WebhooksService {
     await this.httpRepository.sendTemplate(targetUser.id, {
       title: `${nameT}: ${targetUser.name}`,
       subtitle: `${ageT}: ${targetUser.age}\n${locationT}: ${targetUser.city}\n${aboutT}: ${targetUser.bio}`,
-      image_url: targetUser.avatarUrl,
+      image_url: avatarUrl,
       buttons: templateButtons({ i18n: this.i18nService, ...languageT }).hub,
     });
   }
@@ -231,7 +237,11 @@ export class WebhooksService {
 
   async userInfoFlow(flow: string, igId: string) {
     const userInfoFlow = flow.split('-')[0];
-    const userInfoValue = flow.split('-')[1];
+    const userInfoValuePart = flow.split('-');
+    const userInfoValue = userInfoValuePart
+      .slice(1, userInfoValuePart.length)
+      .join('-');
+
     const flowOrigin = flow.split(':')[0];
 
     console.log('userInfoFlow : ', userInfoFlow);
@@ -272,6 +282,10 @@ export class WebhooksService {
       case 'registration:bio':
         await this.bioStep(igId, userInfoValue, flowOrigin);
         return;
+      case 'resubmit:avatar':
+      case 'registration:avatar':
+        await this.avatarStep(igId, userInfoValue, flowOrigin);
+        return;
       case 'resubmit:location':
       case 'registration:location':
         await this.locationStep(igId, userInfoValue, flowOrigin);
@@ -290,7 +304,7 @@ export class WebhooksService {
     console.log('userInfoInitStep');
 
     const currentStepCmd = `${flow}:language`;
-    await this.setLastStep(igId, currentStepCmd);
+    // await this.setLastStep(igId, currentStepCmd);
     const currentUserInfoPrompt = createUserInfoPrompts({
       flow,
       i18n: this.i18nService,
@@ -452,6 +466,65 @@ export class WebhooksService {
       return;
     }
 
+    const currentStepCmd = `${flow}:avatar`;
+    await this.setLastStep(igId, `${flow}:avatar`);
+    const currentUserInfoPrompt = createUserInfoPrompts({
+      flow,
+      i18n: this.i18nService,
+      lang: user.localizationLang,
+    });
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
+  }
+
+  private async avatarStep(
+    igId: string,
+    igAvatarUrl: string,
+    flow: UserInfoFlowType,
+  ) {
+    let validatedAvatarFile: Express.Multer.File;
+    const lang = await this.defineUserLocalization(igId);
+
+    try {
+      const avatarFile = await this.httpRepository.getIgImageFile(igAvatarUrl);
+      validatedAvatarFile = await avatarFileValidationPipe({
+        file: avatarFile,
+        i18n: this.i18nService,
+        lang,
+      });
+    } catch (error) {
+      console.log('ERROR: avatarStep getIgImageFile', error?.message);
+      await this.unpredictableError(igId);
+      return;
+    }
+
+    let avatarKey: string;
+    console.log('validatedAvatarFile : ', validatedAvatarFile);
+
+    try {
+      avatarKey = await this.s3Service.uploadFile(validatedAvatarFile);
+    } catch (error) {
+      console.log('ERROR: avatarStep S3 uploadFile', error?.message);
+      await this.unpredictableError(igId);
+      return;
+    }
+
+    let user: UserEntity;
+    try {
+      user = await this.prisma.user.update({
+        where: {
+          id: igId,
+        },
+        data: {
+          avatarUrl: avatarKey,
+        },
+      });
+    } catch (error) {
+      console.log('ERROR: avatarStep PRISMA', error?.message);
+      await this.unpredictableError(igId);
+      return;
+    }
+
     const currentStepCmd = `${flow}:location`;
     await this.setLastStep(igId, `${flow}:location`);
     const currentUserInfoPrompt = createUserInfoPrompts({
@@ -516,8 +589,6 @@ export class WebhooksService {
 
   private async nameStep(igId: string, name: string) {
     let user: UserEntity;
-    const { avatarUrl } = await this.httpRepository.getProfileInfo(igId);
-    console.log('avatarUrl : ', avatarUrl);
 
     try {
       user = await this.prisma.user.update({
@@ -526,7 +597,6 @@ export class WebhooksService {
         },
         data: {
           name,
-          avatarUrl,
           isRegistered: true,
           lastCmd: null,
         },
@@ -537,6 +607,7 @@ export class WebhooksService {
       return;
     }
 
+    const avatarUrl = await this.s3Service.getFileUrl(user.avatarUrl);
     const languageT = { lang: user.localizationLang };
     const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
     const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);
@@ -550,7 +621,7 @@ export class WebhooksService {
     await this.httpRepository.sendTemplate(igId, {
       title: titleT,
       subtitle: `${nameT}: ${user.name}\n${ageT}: ${user.age}\n${locationT}: ${user.city}\n${aboutT}: ${user.bio}`,
-      image_url: user.avatarUrl,
+      image_url: avatarUrl,
       buttons: templateButtons({ i18n: this.i18nService, ...languageT }).hub,
     });
   }
@@ -582,6 +653,24 @@ export class WebhooksService {
     }
 
     if (textAnswersSteps.includes(targetUser.lastCmd)) {
+      return targetUser.lastCmd;
+    }
+
+    return false;
+  }
+
+  async isImageAnswerStep(igId: string) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id: igId,
+      },
+    });
+
+    if (!targetUser) {
+      return false;
+    }
+
+    if (imageAnswersSteps.includes(targetUser.lastCmd)) {
       return targetUser.lastCmd;
     }
 
@@ -788,6 +877,10 @@ export class WebhooksService {
       await this.httpRepository.getProfileInfo(ourUser.id);
     const { username: targetUserNickname } =
       await this.httpRepository.getProfileInfo(targetUser.id);
+    const targetAvatarUrl = await this.s3Service.getFileUrl(
+      targetUser.avatarUrl,
+    );
+    const ourAvatarUrl = await this.s3Service.getFileUrl(ourUser.avatarUrl);
 
     await this.httpRepository.sendTemplate(ourUser.id, {
       title: this.i18nService.t('common.MATCH.target_user_match', {
@@ -795,7 +888,7 @@ export class WebhooksService {
         args: { name: targetUser.name },
       }),
       subtitle: '',
-      image_url: targetUser.avatarUrl,
+      image_url: targetAvatarUrl,
       buttons: [
         {
           type: 'web_url',
@@ -815,7 +908,7 @@ export class WebhooksService {
         args: { name: ourUser.name },
       }),
       subtitle: '',
-      image_url: ourUser.avatarUrl,
+      image_url: ourAvatarUrl,
       buttons: [
         {
           type: 'web_url',
@@ -928,6 +1021,7 @@ export class WebhooksService {
     });
 
     if (!targetUser.rejectedUsers.includes(ourUser.id)) {
+      const avatarUrl = await this.s3Service.getFileUrl(targetUser.avatarUrl);
       const languageT = { lang: targetUser.localizationLang };
       const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
       const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);
@@ -941,7 +1035,7 @@ export class WebhooksService {
       await this.httpRepository.sendTemplate(targetIgId, {
         title: titleT,
         subtitle: `${nameT}: ${ourUser.name}\n${ageT}: ${ourUser.age}\n${locationT}: ${ourUser.city}\n${aboutT}: ${ourUser.bio}`,
-        image_url: ourUser.avatarUrl,
+        image_url: avatarUrl,
         buttons: templateButtons({
           i18n: this.i18nService,
           ...languageT,
@@ -1051,6 +1145,7 @@ export class WebhooksService {
     }
 
     // TODO: FIND ALL SIMILAR PLACES AND MAKE 1 REUSABLE FNC FOR IT
+    const avatarUrl = await this.s3Service.getFileUrl(nextUser.avatarUrl);
     const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
     const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);
     const locationT = this.i18nService.t(
@@ -1062,7 +1157,7 @@ export class WebhooksService {
     await this.httpRepository.sendTemplate(targetUser.id, {
       title: `${nameT}: ${nextUser.name}`,
       subtitle: `${ageT}: ${nextUser.age}\n${locationT}: ${nextUser.city}\n${aboutT}: ${nextUser.bio}`,
-      image_url: nextUser.avatarUrl,
+      image_url: avatarUrl,
       buttons: templateButtons({
         i18n: this.i18nService,
         ...languageT,
@@ -1208,6 +1303,10 @@ export class WebhooksService {
 
           console.log('changeFields : ', changeFields);
           console.log('currentChange : ', currentChange);
+          console.log(
+            'currentChange ATTACHMENT : ',
+            currentChange.message?.attachments,
+          );
 
           //* We brake a cycle if its our message or it's not message hook from client
           const availableHooks = ['message', 'postback'];
@@ -1250,23 +1349,44 @@ export class WebhooksService {
           }
 
           //* Here we check if user send an answer to registration text question
+          // TODO: Utilize all this bullshit
           const isTextAnswerStep = await this.isTextAnswerStep(senderId);
-          console.log('isRegistrationTextAnswer : ', isTextAnswerStep);
+          console.log('isTextAnswer : ', isTextAnswerStep);
+
+          const isImageAnswerStep = await this.isImageAnswerStep(senderId);
+          console.log('isImageAnswerStep : ', isImageAnswerStep);
 
           if (
-            isTextAnswerStep &&
             !isReply &&
             !isPostback &&
             !isStart &&
             !isContinueRegistration &&
             !isMenu
           ) {
-            await this.handleReply({
-              senderId,
-              payload: `${isTextAnswerStep}-${currentChange?.message?.text}`,
-              text: '',
-            });
-            return;
+            if (isTextAnswerStep) {
+              await this.handleReply({
+                senderId,
+                payload: `${isTextAnswerStep}-${currentChange?.message?.text}`,
+                text: '',
+              });
+              return;
+            }
+
+            if (isImageAnswerStep) {
+              const attachment = currentChange?.message?.attachments
+                ? currentChange?.message?.attachments[0]
+                : {};
+              console.log('attachment : ', attachment);
+
+              if (attachment.type === 'image') {
+                await this.handleReply({
+                  senderId,
+                  payload: `${isImageAnswerStep}-${attachment.payload.url}`,
+                  text: '',
+                });
+                return;
+              }
+            }
           }
 
           if (isReply) {

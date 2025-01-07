@@ -1,7 +1,10 @@
 import * as cities from 'cities.json';
 import { UserInfoFlowType } from './common';
+import { allowedAvatarFileFormats, maxAvatarFileSize } from './constants';
+import { AvatarFileValidationPipeDto } from './dto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Fuse = require('fuse.js');
+import * as sharp from 'sharp';
 
 export const findCity = (input: string): string[] | string => {
   const lowercaseInput = input.toLowerCase().trim();
@@ -53,4 +56,68 @@ export const tryCatchPrismaWrapper = async <T>(
   }
 
   return result;
+};
+
+export const avatarFileValidationPipe = async ({
+  file,
+  i18n,
+  lang,
+}: AvatarFileValidationPipeDto) => {
+  //* 1 - Check file size
+  //* 2 - Check file extension
+  //* 3 - Try to compress file
+  console.log('FILE ORIG SIZE: ', file.size);
+
+  if (file.size >= maxAvatarFileSize) {
+    throw Error(
+      i18n.t('common.ERRORS.max_avatar_file_size', {
+        lang,
+        args: { maxSize: '2' },
+      }),
+    );
+  }
+
+  if (!allowedAvatarFileFormats.includes(file.mimetype.split('/')[1])) {
+    throw Error(
+      i18n.t('common.ERRORS.max_avatar_file_size', {
+        lang,
+        args: { formats: allowedAvatarFileFormats.join(', ') },
+      }),
+    );
+  }
+
+  const compressedAvatar = await compressImage(file);
+
+  return compressedAvatar;
+};
+
+const compressImage = async (file: Express.Multer.File) => {
+  if (!file.buffer || !Buffer.isBuffer(file.buffer)) {
+    return file;
+  }
+
+  if (!file.mimetype.startsWith('image/')) {
+    return file;
+  }
+  const imageExtension = file.mimetype.split('/')[1];
+  const compressionOptions = {
+    quality: 70,
+    progressive: true,
+  };
+  const sizeBeforeCompression = file.buffer.length;
+  console.log('sizeBeforeCompression : ', sizeBeforeCompression);
+
+  try {
+    const compressedBuffer = await sharp(file.buffer)
+      .toFormat(imageExtension as keyof sharp.FormatEnum, compressionOptions)
+      .toBuffer();
+    const sizeAfterCompression = compressedBuffer.length;
+    console.log('sizeAfterCompression : ', sizeAfterCompression);
+
+    return sizeAfterCompression < sizeBeforeCompression
+      ? { ...file, buffer: compressedBuffer, size: compressedBuffer.length }
+      : file;
+  } catch (error) {
+    return file;
+  }
 };

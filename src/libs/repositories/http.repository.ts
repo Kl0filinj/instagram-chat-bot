@@ -1,13 +1,14 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
 import { IG_GRAPH_BASE_URL } from '../constants';
-import { catchError, firstValueFrom, map } from 'rxjs';
+import { catchError, firstValueFrom, map, retry } from 'rxjs';
 import {
   IgUserProfileIfoDto,
   QuickReplyItemDto,
   SendTemplateDto,
 } from '../dto';
 import { SendMessageType } from '../common';
+import { Readable } from 'stream';
 
 @Injectable()
 export class HttpRepository {
@@ -142,6 +143,45 @@ export class HttpRepository {
         error.response?.data || error.message,
       );
     }
+  }
+
+  async getIgImageFile(url: string) {
+    console.log('url : ', url);
+    const response = await firstValueFrom(
+      this.httpService.get(url, { responseType: 'arraybuffer' }).pipe(
+        retry({
+          count: 5,
+          delay: 100,
+          resetOnSuccess: true,
+        }),
+        catchError((error) => {
+          console.error(
+            'Error geting IG file:',
+            error.response?.data || error.message,
+          );
+          throw new Error();
+        }),
+      ),
+    );
+
+    const buffer = Buffer.from(response.data);
+    const urlObj = new URL(url);
+    const originalname = urlObj.searchParams.get('asset_id');
+
+    const multerFile: Express.Multer.File = {
+      fieldname: 'file',
+      originalname,
+      encoding: '7bit',
+      mimetype: response.headers['content-type'],
+      buffer: buffer,
+      size: buffer.length,
+      destination: '',
+      filename: '',
+      path: '',
+      stream: Readable.from(buffer),
+    };
+
+    return multerFile;
   }
 
   async getFollowers() {
