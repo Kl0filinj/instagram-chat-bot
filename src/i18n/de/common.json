@@ -55,7 +55,7 @@
     },
     "DEACTIVATE": {
         "question": "Willst du wirklich aufhören zu suchen?\nIhr Profil wird deaktiviert sein, bis Sie mit der Suche beginnen",
-        "execute": "Ja, mein Profil deaktivieren",
+        "execute": "Ja, deaktivieren",
         "execute_success": "Ihr Profil wurde erfolgreich deaktiviert!",
         "cancel": "Nein"
     },

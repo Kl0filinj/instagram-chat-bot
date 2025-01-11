@@ -2,6 +2,7 @@ import {
   QuickReplyItemDto,
   QuickReplyTemplateItemDto,
   RegistrationPromptOption,
+  TemplateButtonsDto,
   TranslateDto,
   UserInfoLanguageOptionsDto,
 } from './dto';
@@ -214,7 +215,7 @@ export const createDeactivateProfilePrompts = (
 export const templateButtons = ({
   i18n,
   lang,
-}: TranslateDto): Record<
+}: TemplateButtonsDto): Record<
   'hub' | 'scroll' | 'match',
   QuickReplyTemplateItemDto[]
 > => ({

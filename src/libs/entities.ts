@@ -19,3 +19,14 @@ export class UserEntity {
   localizationLang: string;
   repotrs?: any[];
 }
+
+export class ReportEntity {
+  id: string;
+  createdAt: Date;
+  topic: string | null;
+  description: string | null;
+  userId: string;
+  user?: UserEntity;
+  reportedUserId: string;
+  reportedUser?: UserEntity;
+}

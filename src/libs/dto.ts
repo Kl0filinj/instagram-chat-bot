@@ -76,3 +76,7 @@ export class UserInfoLanguageOptionsDto extends TranslateDto {
 export class AvatarFileValidationPipeDto extends TranslateDto {
   file: Express.Multer.File;
 }
+
+export class TemplateButtonsDto extends TranslateDto {
+  data?: string;
+}

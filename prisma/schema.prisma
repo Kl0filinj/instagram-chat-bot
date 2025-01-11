@@ -30,9 +30,10 @@ model User {
   isRegistered     Boolean   @default(false)
   lastCmd          String?
   localizationLang String    @default("en")
-  reports          Reports[]
+  reports          Reports[] @relation("ReportCreator")
+  reportedTarget   Reports[] @relation("ReportedUser")
 
-  @@index([id, name, city])
+  @@index([name, city])
 }
 
 enum UserSex {
@@ -42,12 +43,14 @@ enum UserSex {
 }
 
 model Reports {
-  id          String   @id @unique @default(uuid())
-  topic       String?
-  description String
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
+  id             String   @id @unique @default(uuid())
+  topic          String?
+  description    String?
+  createdAt      DateTime @default(now())
+  user           User     @relation("ReportCreator", fields: [userId], references: [id])
+  userId         String
+  reportedUser   User     @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  reportedUserId String
 
-  @@index([id, topic, userId])
+  @@index([topic, userId, reportedUserId])
 }

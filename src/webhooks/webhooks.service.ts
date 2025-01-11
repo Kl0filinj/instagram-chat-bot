@@ -25,6 +25,7 @@ import {
   createDeactivateProfilePrompts,
   imageAnswersSteps,
   avatarFileValidationPipe,
+  ReportEntity,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -740,6 +741,8 @@ export class WebhooksService {
       }),
       'text',
     );
+    await this.handleMenu(igId);
+
     return;
   }
 
@@ -759,16 +762,21 @@ export class WebhooksService {
       return;
     }
     await this.handleMenu(igId);
+
     return;
   }
 
   private async reportFlow(flow: string, igId: string) {
     const reportFlow = flow.split('-')[0];
-    const reportValue = flow.split('-')[1];
+    const reportValuePart = flow.split('-');
+    const reportValue = reportValuePart
+      .slice(1, reportValuePart.length)
+      .join('-');
 
     console.log('reportFlow : ', reportFlow);
     console.log('reportValue : ', reportValue);
 
+    // TODO: Probably need to add report:init here
     switch (reportFlow) {
       case 'report:send':
         await this.reportSend(igId, reportValue);
@@ -789,16 +797,43 @@ export class WebhooksService {
       },
     });
 
+    let report: ReportEntity;
+
     try {
-      await this.prisma.reports.create({
-        data: {
-          description: reportText,
-          user: {
-            connect: {
-              id: igId,
+      report = await this.prisma.$transaction(async (tx) => {
+        const findReport = await tx.reports.findFirst({
+          where: {
+            userId: igId,
+            description: null,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+
+        if (!findReport) throw new Error('REPORT TO UPD NOT FOUND');
+
+        const updReport = await tx.reports.update({
+          where: {
+            id: findReport.id,
+          },
+          data: {
+            description: reportText,
+          },
+        });
+
+        await tx.user.update({
+          where: {
+            id: igId,
+          },
+          data: {
+            rejectedUsers: {
+              push: updReport.reportedUserId,
             },
           },
-        },
+        });
+
+        return updReport;
       });
     } catch (error) {
       console.log('ERROR: nameStep PRISMA', error?.message);
@@ -809,7 +844,7 @@ export class WebhooksService {
     //* Send reportText to tg
     const telegramRes = await this.telegramBot.sendMessage(
       process.env.TG_CHAT_ID,
-      `REPORT FROM USER\nName: ${ourUser.name}\nId: ${ourUser.id}\nMessage :"${reportText}"`,
+      `REPORT FROM USER\n\nFROM:\nName: ${ourUser.name}\nId: ${ourUser.id}\n\nTO:\nId: ${report.reportedUserId}\n\nMessage :"${reportText}"`,
       {
         message_thread_id: 2,
       },
@@ -842,7 +877,7 @@ export class WebhooksService {
         await this.matchDislike(igId);
         return;
       case 'match:report':
-        await this.matchReport(igId);
+        await this.matchReport(igId, matchValue);
         return;
       default:
         await this.wrongReply(igId);
@@ -935,7 +970,7 @@ export class WebhooksService {
     return;
   }
 
-  private async matchReport(igId: string) {
+  private async matchReport(igId: string, reportedUserId: string) {
     let user: UserEntity;
 
     try {
@@ -945,6 +980,21 @@ export class WebhooksService {
         },
         data: {
           lastCmd: 'report:send',
+        },
+      });
+
+      await this.prisma.reports.create({
+        data: {
+          reportedUser: {
+            connect: {
+              id: reportedUserId,
+            },
+          },
+          user: {
+            connect: {
+              id: igId,
+            },
+          },
         },
       });
     } catch (error) {
@@ -1021,7 +1071,7 @@ export class WebhooksService {
     });
 
     if (!targetUser.rejectedUsers.includes(ourUser.id)) {
-      const avatarUrl = await this.s3Service.getFileUrl(targetUser.avatarUrl);
+      const avatarUrl = await this.s3Service.getFileUrl(ourUser.avatarUrl);
       const languageT = { lang: targetUser.localizationLang };
       const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
       const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);

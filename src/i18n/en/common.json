@@ -55,7 +55,7 @@
     },
     "DEACTIVATE": {
         "message": "Do you really want to stop searching ?\nYour profile gonna be disabled until you start searching",
-        "execute": "Yes, deactivate my profile",
+        "execute": "Yes, deactivate",
         "execute_success": "Your profile was successfully deactivated !",
         "cancel": "No"
     },
