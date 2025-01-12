@@ -26,6 +26,7 @@ import {
   imageAnswersSteps,
   avatarFileValidationPipe,
   ReportEntity,
+  findClosestCity,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -34,9 +35,9 @@ import { S3Service } from 'src/s3/s3.service';
 const TelegramBot = require('node-telegram-bot-api');
 
 // TODO: REPORT SYSTEM - ✅
-// TODO: DEACTIVATE USER PROFILE FUNCTIONALITY
-// TODO: ADD PHOTOS UPLOAD STEP/FUNCTIONALITY
-// TODO: IMPROVE CITY SEARCH
+// TODO: DEACTIVATE USER PROFILE FUNCTIONALITY - ✅
+// TODO: ADD PHOTOS UPLOAD STEP/FUNCTIONALITY - ✅
+// TODO: IMPROVE CITY SEARCH - ✅
 // TODO: CHANGE CMDs TO BUTTONS
 // TODO: Add Ice Breakers
 // TODO: IMPROVE CODE & ARCH
@@ -1135,6 +1136,7 @@ export class WebhooksService {
       }
     }
 
+    const languageT = { lang: targetUser.localizationLang };
     const ageOptions: Record<UserSexType, any> = {
       male: {
         minAgeLimit: targetUser.age - 2,
@@ -1154,32 +1156,62 @@ export class WebhooksService {
     console.log('minAgeLimit : ', currentAgeOption.minAgeLimit);
     console.log('maxAgeLimit : ', currentAgeOption.maxAgeLimit);
 
-    const nextUser = await this.prisma.user.findFirst({
-      where: {
-        id: {
-          notIn: [
-            targetUser.id,
-            ...targetUser.likedUsers,
-            ...targetUser.rejectedUsers,
-          ],
+    const findNextUser = async (
+      city: string,
+      alreadySearched = [],
+      depth = 0,
+    ) => {
+      const maxDepth = 2000;
+      console.log('depth : ', depth);
+      console.log(
+        'alreadySearched : ',
+        alreadySearched[alreadySearched.length - 1],
+      );
+
+      if (depth >= maxDepth) {
+        return undefined;
+      }
+
+      const nextUser = await this.prisma.user.findFirst({
+        where: {
+          id: {
+            notIn: [
+              targetUser.id,
+              ...targetUser.likedUsers,
+              ...targetUser.rejectedUsers,
+            ],
+          },
+          city,
+          age: {
+            lte: currentAgeOption.maxAgeLimit,
+            gte: currentAgeOption.minAgeLimit,
+          },
+          ...(targetUser.sexInterest !== 'none' && {
+            sex: targetUser.sexInterest,
+          }),
+          isBlocked: false,
+          isActive: true,
+          isRegistered: true,
         },
-        city: targetUser.city,
-        age: {
-          lte: currentAgeOption.maxAgeLimit,
-          gte: currentAgeOption.minAgeLimit,
+        orderBy: {
+          age: 'desc',
         },
-        ...(targetUser.sexInterest !== 'none' && {
-          sex: targetUser.sexInterest,
-        }),
-        isBlocked: false,
-        isActive: true,
-        isRegistered: true,
-      },
-      orderBy: {
-        age: 'desc',
-      },
-    });
-    const languageT = { lang: targetUser.localizationLang };
+      });
+
+      if (!nextUser) {
+        const newAlreadySearched = [...alreadySearched, city];
+        const closestCity = findClosestCity(city, newAlreadySearched);
+
+        if (!closestCity) {
+          return undefined;
+        }
+
+        return findNextUser(closestCity.name, newAlreadySearched, depth + 1);
+      }
+
+      return nextUser;
+    };
+    const nextUser = await findNextUser(targetUser.city);
 
     if (!nextUser) {
       await this.httpRepository.sendMessage(

@@ -80,3 +80,12 @@ export class AvatarFileValidationPipeDto extends TranslateDto {
 export class TemplateButtonsDto extends TranslateDto {
   data?: string;
 }
+
+export class CityObject {
+  name: string;
+  country: string;
+  lat: string;
+  lng: string;
+  admin1: string;
+  admin2: string;
+}
