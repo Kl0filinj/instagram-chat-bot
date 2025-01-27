@@ -1,5 +1,7 @@
 import { I18nService } from 'nestjs-i18n';
 import { UserInfoFlowType } from './common';
+import { IsNotEmpty, IsString } from 'class-validator';
+import { Expose } from 'class-transformer';
 
 export class MessageDto {
   mid: string;
@@ -88,4 +90,61 @@ export class CityObject {
   lng: string;
   admin1: string;
   admin2: string;
+}
+
+export class LoginDto {
+  @IsNotEmpty()
+  @IsString()
+  username: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+}
+
+export class LoginResponseDto {
+  accessToken: string;
+}
+
+export class AllUsersResponseDto {
+  @Expose()
+  id: string;
+
+  @Expose()
+  age: number;
+
+  @Expose()
+  sex: string;
+
+  @Expose()
+  sexInterest: string;
+
+  @Expose()
+  city: string;
+
+  @Expose()
+  name: string;
+
+  @Expose()
+  isBlocked: boolean;
+
+  @Expose()
+  isActive: boolean;
+
+  @Expose()
+  isRegistered: boolean;
+
+  @Expose()
+  createdAt: Date;
+}
+
+export class UserDetailsResponseDto extends AllUsersResponseDto {
+  @Expose()
+  bio: string;
+
+  @Expose()
+  avatarUrl: string;
+
+  @Expose()
+  localizationLang: string;
 }

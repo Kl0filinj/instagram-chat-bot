@@ -6,3 +6,5 @@ export * from './message-templates';
 export * from './entities';
 export * from './helpers';
 export * from './redis';
+export * from './strategies';
+export * from './guards';

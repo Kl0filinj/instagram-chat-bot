@@ -7,6 +7,7 @@ import { ConfigModule } from '@nestjs/config';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { HelpersModule } from './webhooks/helpers/helpers.module';
 import { S3Module } from './s3/s3.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { S3Module } from './s3/s3.module';
     WebhooksModule,
     HelpersModule,
     S3Module,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

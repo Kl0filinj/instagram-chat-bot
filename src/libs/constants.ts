@@ -20,6 +20,12 @@ export const maxAvatarFileSize = 2097152; // in bytes
 export type RedisClient = RedisClientType;
 export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 
+export const options = {
+  excludeExtraneousValues: true,
+  enableImplicitConversion: true,
+  exposeUnsetFields: false,
+};
+
 export const textAnswersSteps = [
   'registration:bio',
   'resubmit:bio',
