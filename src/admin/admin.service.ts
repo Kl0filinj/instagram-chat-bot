@@ -3,7 +3,9 @@ import {
   LoginDto,
   LoginResponseDto,
   options,
+  EditUserDto,
   UserDetailsResponseDto,
+  CreateNewUserDto,
 } from '@libs';
 import {
   Injectable,
@@ -13,6 +15,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AdminService {
@@ -67,7 +70,31 @@ export class AdminService {
     return plainToInstance(UserDetailsResponseDto, getUserById, options);
   }
 
-  async editUser() {}
+  async createNewUser(dto: CreateNewUserDto) {
+    try {
+      await this.prisma.user.create({
+        data: {
+          id: uuidv4(),
+          ...dto,
+        },
+      });
+    } catch (error) {}
+  }
+
+  async editUser(dto: EditUserDto, userId: string) {
+    try {
+      await this.prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: dto,
+      });
+    } catch (error) {
+      throw new NotImplementedException();
+    }
+
+    return this.getUserById(userId);
+  }
 
   async deleteUser(userId: string) {
     try {

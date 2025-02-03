@@ -6,8 +6,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   app.enableCors({
-    origin: 'http://localhost:3000', // TODO: Replace on env later
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: [
+      'http://localhost:3000',
+      'https://instagram-chat-bot-admin-panel.vercel.app',
+      'https://pug-simple-tadpole.ngrok-free.app',
+    ],
+    //   [
+    //   'http://localhost:3000',
+    //   'https://instagram-chat-bot-admin-panel.vercel.app/',
+    // ], // TODO: Replace on env later
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });

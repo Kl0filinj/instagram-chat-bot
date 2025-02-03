@@ -2,6 +2,8 @@ import { I18nService } from 'nestjs-i18n';
 import { UserInfoFlowType } from './common';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { Expose } from 'class-transformer';
+import { UserEntity } from './entities';
+import { OmitType, PartialType } from '@nestjs/mapped-types';
 
 export class MessageDto {
   mid: string;
@@ -148,3 +150,16 @@ export class UserDetailsResponseDto extends AllUsersResponseDto {
   @Expose()
   localizationLang: string;
 }
+
+export class CreateNewUserDto extends OmitType(UserEntity, [
+  'id',
+  'avatarUrl',
+  'rejectedUsers',
+  'likedUsers',
+  'createdAt',
+  'lastCmd',
+  'repotrs',
+  'isRegistered',
+]) {}
+
+export class EditUserDto extends PartialType(CreateNewUserDto) {}

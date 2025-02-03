@@ -6,10 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { AtGuard, LoginDto } from '@libs';
+import { AtGuard, LoginDto, EditUserDto, CreateNewUserDto } from '@libs';
 
 @Controller('admin')
 export class AdminController {
@@ -28,7 +29,8 @@ export class AdminController {
 
   @Get('users')
   @UseGuards(AtGuard)
-  getUsers() {
+  getUsers(@Req() req: Request) {
+    console.log('req : ', req);
     return this.adminService.getAllUsers();
   }
 
@@ -40,14 +42,14 @@ export class AdminController {
 
   @Post('users')
   @UseGuards(AtGuard)
-  createUsers() {
-    return null;
+  createUsers(@Body() dto: CreateNewUserDto) {
+    return this.adminService.createNewUser(dto);
   }
 
   @Patch('users/:userId')
   @UseGuards(AtGuard)
-  updateUsers(@Param('userId') userId: string) {
-    return null;
+  editUsers(@Param('userId') userId: string, @Body() dto: EditUserDto) {
+    return this.adminService.editUser(dto, userId);
   }
 
   @Delete('users/:userId')
