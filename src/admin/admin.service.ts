@@ -6,6 +6,9 @@ import {
   EditUserDto,
   UserDetailsResponseDto,
   CreateNewUserDto,
+  PaginatedResponse,
+  getPage,
+  PaginationQuery,
 } from '@libs';
 import {
   Injectable,
@@ -47,15 +50,48 @@ export class AdminService {
     return { accessToken };
   }
 
-  async getAllUsers() {
+  async getAllUsers(
+    pagination: PaginationQuery,
+  ): Promise<PaginatedResponse<AllUsersResponseDto>> {
+    const { search, skip, limit, AND } = pagination;
+
+    if (search) {
+      const options = { contains: search, mode: 'insensitive' };
+      AND.push({
+        OR: [
+          { id: options },
+          { name: options },
+          { city: options },
+          { bio: options },
+        ],
+      });
+    }
+
+    const total = await this.prisma.user.count({
+      where: {
+        AND: AND.length ? AND : undefined,
+      },
+    });
+
     const allUsers = await this.prisma.user.findMany({
+      where: {
+        AND: AND.length ? AND : undefined,
+      },
+      take: limit,
+      skip,
       orderBy: {
         id: 'desc',
       },
     });
-    const qq = plainToInstance(AllUsersResponseDto, allUsers, options);
-    console.log('qq : ', qq);
-    return qq;
+
+    const formattedUsers = plainToInstance(
+      AllUsersResponseDto,
+      allUsers,
+      options,
+    );
+    const page = getPage(skip, limit);
+
+    return { data: formattedUsers, page, perPage: limit, total };
   }
 
   async getUserById(userId: string) {

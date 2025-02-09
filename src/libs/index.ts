@@ -8,3 +8,4 @@ export * from './helpers';
 export * from './redis';
 export * from './strategies';
 export * from './guards';
+export * from './decorators';

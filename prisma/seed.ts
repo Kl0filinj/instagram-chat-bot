@@ -6,7 +6,12 @@ async function main() {
   await prisma.user.deleteMany({
     where: {
       id: {
-        notIn: ['922129809859449', '1300318520990220'],
+        notIn: [
+          '1109348780564816',
+          '1300318520990220',
+          '1614085839501244',
+          '922129809859449',
+        ],
       },
     },
   });
@@ -16,7 +21,7 @@ async function main() {
       'female',
       'none',
     ];
-    const cities = ['New York', 'London', 'Vienna'];
+    const cities = ['London', 'Linz', 'Vienna'];
 
     return Array.from({ length: count }, (_, index) => ({
       id: String(index),
@@ -33,7 +38,7 @@ async function main() {
   };
 
   await prisma.user.createMany({
-    data: generateMockUsers(20),
+    data: generateMockUsers(100),
   });
 }
 

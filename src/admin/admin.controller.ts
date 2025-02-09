@@ -10,7 +10,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
-import { AtGuard, LoginDto, EditUserDto, CreateNewUserDto } from '@libs';
+import {
+  AtGuard,
+  LoginDto,
+  EditUserDto,
+  CreateNewUserDto,
+  PaginationQuery,
+  GetPagination,
+} from '@libs';
 
 @Controller('admin')
 export class AdminController {
@@ -29,9 +36,8 @@ export class AdminController {
 
   @Get('users')
   @UseGuards(AtGuard)
-  getUsers(@Req() req: Request) {
-    console.log('req : ', req);
-    return this.adminService.getAllUsers();
+  getUsers(@GetPagination() pagination: PaginationQuery) {
+    return this.adminService.getAllUsers(pagination);
   }
 
   @Get('users/:userId')

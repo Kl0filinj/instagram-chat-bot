@@ -177,3 +177,7 @@ const compressImage = async (file: Express.Multer.File) => {
     return file;
   }
 };
+
+export const getPage = (skip: number, take: number) => {
+  return skip ? Math.ceil(skip / take) + 1 : 1;
+};

@@ -163,3 +163,18 @@ export class CreateNewUserDto extends OmitType(UserEntity, [
 ]) {}
 
 export class EditUserDto extends PartialType(CreateNewUserDto) {}
+
+export class PaginatedResponse<T> {
+  data: T[];
+  page: number;
+  total: number;
+  perPage: number;
+}
+
+export class PaginationQuery {
+  OR?: any[];
+  AND?: any[];
+  skip?: number;
+  limit?: number;
+  search?: string;
+}
