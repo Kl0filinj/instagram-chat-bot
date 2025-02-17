@@ -25,6 +25,11 @@ export class WebhooksController {
     return this.webhooksService.clearUsersActivity();
   }
 
+  // @Post('ice-breakers')
+  // setIceBreakers() {
+  //   return this.webhooksService.setIceBreakers();
+  // }
+
   @Get()
   verifyWebhook(
     @Query('hub.mode') mode: string,

@@ -9,6 +9,7 @@ import {
 } from '../dto';
 import { SendMessageType } from '../common';
 import { Readable } from 'stream';
+import { I18nService } from 'nestjs-i18n';
 
 @Injectable()
 export class HttpRepository {
@@ -252,5 +253,57 @@ export class HttpRepository {
       avatarUrl: response?.profile_pic ?? '', // TODO: Find cool plug
       username: response?.username,
     };
+  }
+
+  async setIceBreakers(i18n: I18nService) {
+    const iceBreakersData = {
+      platform: 'instagram',
+      ice_breakers: [
+        {
+          call_to_actions: [
+            {
+              question: i18n.t('common.ICE_BREAKERS.start', { lang: 'en' }),
+              payload: 'registration:init',
+            },
+          ],
+          locale: 'default',
+        },
+        {
+          call_to_actions: [
+            {
+              question: i18n.t('common.ICE_BREAKERS.start', { lang: 'de' }),
+              payload: 'registration:init',
+            },
+          ],
+          locale: 'de_DE',
+        },
+      ],
+    };
+
+    const token = '';
+    //* Use page token here, token above is expired
+
+    const response = await firstValueFrom(
+      this.httpService
+        .post(
+          `https://graph.facebook.com/v22.0/me/messenger_profile?access_token=${token}`,
+          iceBreakersData,
+        )
+        .pipe(
+          map((resp) => {
+            console.log('RESP DATA : ', resp.data);
+            return resp.data;
+          }),
+          catchError((error) => {
+            console.error(
+              'Error geting profile picture:',
+              error.response?.data || error.message,
+            );
+            throw new Error();
+          }),
+        ),
+    );
+
+    return response;
   }
 }

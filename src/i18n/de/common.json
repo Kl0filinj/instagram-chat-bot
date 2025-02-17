@@ -1,69 +1,77 @@
 {
-    "CMD": {
-        "start": "start - Registrierung für neue Benutzer",
-        "continue": "continue - Fortsetzung des laufenden Prozesses",
-        "hub": "menu - Zum Hauptmenü"
+  "CMD": {
+    "start": "start - Registrierung für neue Benutzer",
+    "start_button": "📋 start",
+    "continue": "continue - Fortsetzung des laufenden Prozesses",
+    "continue_button": "↪️ continue",
+    "hub": "menu - Zum Hauptmenü",
+    "hub_button": "🏠 menu"
+  },
+  "ERRORS": {
+    "wrong_reply": "Falscher Befehl. Verfügbare Befehle",
+    "unpredictable_error": "Ein unvorhersehbarer Fehler ist aufgetreten, wenden Sie sich an support@trial2024.com",
+    "max_file_size": "Die hochgeladene Datei überschreitet die maximale zulässige Größe von {maxSize} MB.\nBitte laden Sie eine kleinere Datei hoch und versuchen Sie es erneut",
+    "wrong_avatar_file_extension": "Die hochgeladene Datei ist kein gültiges Bildformat.\nBitte laden Sie eine Datei in einem der folgenden Formate hoch: {formats}",
+    "avatar_upload_unpredictable": "Unvorhersehbarer Fehler beim Hochladen des Avatars\nVersuchen Sie es in wenigen Sekunden erneut oder wenden Sie sich an den Support\nsupport@trial2024.com",
+    "message_length": "Die Nachricht ist zu lang\nLimit ist {length} Zeichen"
+  },
+  "REGISTRATION": {
+    "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden?",
+    "age": "Wie alt sind Sie ?",
+    "SEX": {
+      "message": "Wählen Sie jetzt Ihr Geschlecht",
+      "male": "Mann",
+      "female": "Frau"
     },
-    "ERRORS": {
-        "wrong_reply": "Falscher Befehl. Verfügbare Befehle",
-        "unpredictable_error": "Ein unvorhersehbarer Fehler ist aufgetreten, wenden Sie sich an support@trial2024.com",
-        "max_file_size": "Die hochgeladene Datei überschreitet die maximale zulässige Größe von {maxSize} MB.\nBitte laden Sie eine kleinere Datei hoch und versuchen Sie es erneut",
-        "wrong_avatar_file_extension": "Die hochgeladene Datei ist kein gültiges Bildformat.\nBitte laden Sie eine Datei in einem der folgenden Formate hoch: {formats}"
+    "SEX_INTEREST": {
+      "message": "Nach wem suchen Sie ?",
+      "male": "Mann",
+      "female": "Frau",
+      "no_metter": "ohne Metrum"
     },
-    "REGISTRATION": {
-        "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden?",
-        "age": "Wie alt sind Sie ?",
-        "SEX": {
-            "message": "Wählen Sie jetzt Ihr Geschlecht",
-            "male": "Mann",
-            "female": "Frau"
-        },
-        "SEX_INTEREST": {
-            "message": "Nach wem suchen Sie ?",
-            "male": "Mann",
-            "female": "Frau",
-            "no_metter": "ohne Metrum"
-        },
-        "bio": "Erzählen Sie uns ein wenig über sich und wen Sie suchen",
-        "avatar": "Laden Sie Ihren Avatar hoch.\nDie Bildgröße muss weniger als {maxSize} MB betragen.",
-        "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben)?",
-        "location_available": "Verfügbare Städte",
-        "name": "Wie ist Ihr Name?"
-    },
-    "SCROLL": {
-        "menu": "💤 Menü",
-        "like": "👍 Like",
-        "aside_like": "Jemand mochte Sie ❤️",
-        "dislike": "👎 Dislike",
-        "no_users": "Es tut uns leid, aber wir haben keine aktiven Nutzer mehr in der {city}"
-    },
-    "MENU": {
-        "start": "Blättern beginnen",
-        "resubmit": "Profil erneut einreichen",
-        "deactivate": "Profil deaktivieren"
-    },
-    "MATCH": {
-        "like": "💞 Like",
-        "dislike": "💔 Dislike",
-        "report": "⚠️ Benutzer melden",
-        "target_user_match": "Genießen Sie Ihre Zeit mit: {name} !",
-        "other_user_match": "Sie haben eine Übereinstimmung mit: {name} !"
-    },
-    "REPORT": {
-        "describe": "Beschreiben Sie Ihren Bericht in 1-3 Sätzen",
-        "sent_success": "Ihr Bericht wurde erfolgreich gesendet !"
-    },
-    "DEACTIVATE": {
-        "question": "Willst du wirklich aufhören zu suchen?\nIhr Profil wird deaktiviert sein, bis Sie mit der Suche beginnen",
-        "execute": "Ja, deaktivieren",
-        "execute_success": "Ihr Profil wurde erfolgreich deaktiviert!",
-        "cancel": "Nein"
-    },
-    "CARD_INFO": {
-        "name": "Name",
-        "age": "Alter",
-        "location": "Wohnort",
-        "about": "Über",
-        "title": "Ihre Infokarte"
-    }
+    "bio": "Erzählen Sie uns ein wenig über sich und wen Sie suchen",
+    "avatar": "Laden Sie Ihren Avatar hoch.\nDie Bildgröße muss weniger als {maxSize} MB betragen.",
+    "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben)?",
+    "location_available": "Verfügbare Städte",
+    "name": "Wie ist Ihr Name?"
+  },
+  "SCROLL": {
+    "menu": "💤 Menü",
+    "like": "👍 Like",
+    "aside_like": "Jemand mochte Sie ❤️",
+    "dislike": "👎 Dislike",
+    "no_users": "Es tut uns leid, aber wir haben keine aktiven Nutzer mehr in der {city}"
+  },
+  "MENU": {
+    "start": "Blättern beginnen",
+    "resubmit": "Profil erneut einreichen",
+    "deactivate": "Profil deaktivieren"
+  },
+  "MATCH": {
+    "like": "💞 Like",
+    "dislike": "💔 Dislike",
+    "report": "⚠️ Benutzer melden",
+    "target_user_match": "Genießen Sie Ihre Zeit mit: {name} !",
+    "other_user_match": "Sie haben eine Übereinstimmung mit: {name} !"
+  },
+  "REPORT": {
+    "describe": "Beschreiben Sie Ihren Bericht in 1-3 Sätzen",
+    "sent_success": "Ihr Bericht wurde erfolgreich gesendet !"
+  },
+  "DEACTIVATE": {
+    "question": "Willst du wirklich aufhören zu suchen?\nIhr Profil wird deaktiviert sein, bis Sie mit der Suche beginnen",
+    "execute": "Ja, deaktivieren",
+    "execute_success": "Ihr Profil wurde erfolgreich deaktiviert!",
+    "cancel": "Nein"
+  },
+  "CARD_INFO": {
+    "name": "Name",
+    "age": "Alter",
+    "location": "Wohnort",
+    "about": "Über",
+    "title": "Ihre Infokarte"
+  },
+  "ICE_BREAKERS": {
+    "start": "Bot starten"
+  }
 }

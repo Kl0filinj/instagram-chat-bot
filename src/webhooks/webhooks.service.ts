@@ -31,6 +31,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
 import { S3Service } from 'src/s3/s3.service';
+import { ApifyClient } from 'apify-client';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -38,16 +39,19 @@ const TelegramBot = require('node-telegram-bot-api');
 // TODO: DEACTIVATE USER PROFILE FUNCTIONALITY - ✅
 // TODO: ADD PHOTOS UPLOAD STEP/FUNCTIONALITY - ✅
 // TODO: IMPROVE CITY SEARCH - ✅
-// TODO: CHANGE CMDs TO BUTTONS
-// TODO: Add Ice Breakers
+// TODO: CHANGE CMDs TO BUTTONS - ✅
 // TODO: IMPROVE CODE & ARCH
-// TODO: VALIDATION REGISTER DATA (Length)
-// TODO: CHECK SUBSCRIPTION FUNCTIONALITY
+// TODO: ADD EMOJI AS SIGN OF START (you know)
+// TODO: VALIDATION REGISTER DATA (Length) - ✅
+// TODO: CHECK SUBSCRIPTION FUNCTIONALITY - 🐷⚠️🐷
+// TODO: ADD GLOBAL FILTER TO CATCH TOKEN EXPIRY ERROR AND REFRESH IT
 // TODO: PROJECT DOCUMENTATION
+// TODO: Add Ice Breakers (OPT) - ✅
 
 @Injectable()
 export class WebhooksService {
   private readonly telegramBot = new TelegramBot(process.env.TG_ACCESS_TOKEN);
+  private readonly apifyClient: ApifyClient;
 
   constructor(
     private prisma: PrismaService,
@@ -55,7 +59,11 @@ export class WebhooksService {
     private readonly i18nService: I18nService,
     private readonly redisRepo: RedisRepository,
     private readonly s3Service: S3Service,
-  ) {}
+  ) {
+    this.apifyClient = new ApifyClient({
+      token: process.env.APIFY_TOKEN,
+    });
+  }
 
   async handleCommand(igId: string, cmd: string) {
     switch (cmd) {
@@ -230,6 +238,12 @@ export class WebhooksService {
         return;
       case 'report':
         await this.reportFlow(payload, senderId);
+      case 'start_cmd':
+        await this.handleStartMessage(senderId);
+      case 'continue_cmd':
+        await this.handleContinueRegistration(senderId);
+      case 'hub_cmd':
+        await this.handleMenu(senderId);
         return;
       default:
         await this.wrongReply(payload);
@@ -251,7 +265,7 @@ export class WebhooksService {
     console.log('flowOrigin : ', flowOrigin);
 
     if (!isUserInfoFlowType(flowOrigin)) {
-      await this.unpredictableError(igId);
+      await this.unpredictableError(igId, 'User flow type error');
       return;
     }
 
@@ -304,6 +318,16 @@ export class WebhooksService {
 
   private async userInfoInitStep(igId: string, flow: UserInfoFlowType) {
     console.log('userInfoInitStep');
+    const targetUser = await this.prisma.user.findUnique({
+      where: {
+        id: igId,
+      },
+    });
+
+    if (targetUser) {
+      await this.handleMenu(igId);
+      return;
+    }
 
     const currentStepCmd = `${flow}:language`;
     // await this.setLastStep(igId, currentStepCmd);
@@ -343,7 +367,11 @@ export class WebhooksService {
       await this.redisRepo.setUserLocalizationLang(igId, language);
     } catch (error) {
       console.log('ERROR: languageStep PRISMA or REDIS', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'languageStep PRISMA or REDIS',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -372,7 +400,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: ageStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'ageStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -404,7 +436,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: sexStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'sexStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -435,8 +471,12 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      console.log('ERROR: ageStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      console.log('ERROR: sexInterest PRISMA', error?.message);
+      await this.unpredictableError(
+        igId,
+        'sexInterest PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -452,6 +492,21 @@ export class WebhooksService {
   }
 
   private async bioStep(igId: string, bio: string, flow: UserInfoFlowType) {
+    const pureBioLength = bio.trim().length;
+
+    if (pureBioLength === 0 || pureBioLength > 100) {
+      const lang = await this.defineUserLocalization(igId);
+      await this.httpRepository.sendMessage(
+        igId,
+        this.i18nService.t('common.ERRORS.message_length', {
+          lang,
+          args: { length: 100 },
+        }),
+        'text',
+      );
+      return;
+    }
+
     let user: UserEntity;
     try {
       user = await this.prisma.user.update({
@@ -464,7 +519,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: bioStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'bioStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -495,8 +554,14 @@ export class WebhooksService {
         lang,
       });
     } catch (error) {
-      console.log('ERROR: avatarStep getIgImageFile', error?.message);
-      await this.unpredictableError(igId);
+      await this.httpRepository.sendMessage(
+        igId,
+        error.message ||
+          this.i18nService.t('common.ERRORS.avatar_upload_unpredictable', {
+            lang,
+          }),
+        'text',
+      );
       return;
     }
 
@@ -507,7 +572,11 @@ export class WebhooksService {
       avatarKey = await this.s3Service.uploadFile(validatedAvatarFile);
     } catch (error) {
       console.log('ERROR: avatarStep S3 uploadFile', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'avatarStep S3 uploadFile',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -523,7 +592,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: avatarStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'avatarStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -574,7 +647,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: locationStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'locationStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -590,8 +667,22 @@ export class WebhooksService {
   }
 
   private async nameStep(igId: string, name: string) {
-    let user: UserEntity;
+    const pureNameLength = name.trim().length;
 
+    if (pureNameLength === 0 || pureNameLength > 30) {
+      const lang = await this.defineUserLocalization(igId);
+      await this.httpRepository.sendMessage(
+        igId,
+        this.i18nService.t('common.ERRORS.message_length', {
+          lang,
+          args: { length: 30 },
+        }),
+        'text',
+      );
+      return;
+    }
+
+    let user: UserEntity;
     try {
       user = await this.prisma.user.update({
         where: {
@@ -605,7 +696,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: nameStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'nameStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -731,7 +826,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: deactivateProfileExecute PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'deactivateProfileExecute PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -759,7 +858,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: deactivateProfileCancel PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'deactivateProfileCancel PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
     await this.handleMenu(igId);
@@ -789,6 +892,21 @@ export class WebhooksService {
   }
 
   private async reportSend(igId: string, reportText: string) {
+    const pureReportLength = reportText.trim().length;
+
+    if (pureReportLength === 0 || pureReportLength > 250) {
+      const lang = await this.defineUserLocalization(igId);
+      await this.httpRepository.sendMessage(
+        igId,
+        this.i18nService.t('common.ERRORS.message_length', {
+          lang,
+          args: { length: 250 },
+        }),
+        'text',
+      );
+      return;
+    }
+
     const ourUser = await this.prisma.user.update({
       where: {
         id: igId,
@@ -837,8 +955,12 @@ export class WebhooksService {
         return updReport;
       });
     } catch (error) {
-      console.log('ERROR: nameStep PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      console.log('ERROR: report send PRISMA', error?.message);
+      await this.unpredictableError(
+        igId,
+        'report send PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -1000,7 +1122,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('ERROR: matchReport PRISMA', error?.message);
-      await this.unpredictableError(igId);
+      await this.unpredictableError(
+        igId,
+        'matchReport PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
       return;
     }
 
@@ -1131,7 +1257,11 @@ export class WebhooksService {
           'ERROR: scrollSendNextUser:set isActive:true PRISMA',
           error?.message,
         );
-        await this.unpredictableError(targetUser.id);
+        await this.unpredictableError(
+          targetUser.id,
+          'scrollSendNextUser:set isActive:true PRISMA',
+          JSON.stringify(error, null, ' '),
+        );
         return;
       }
     }
@@ -1307,24 +1437,60 @@ export class WebhooksService {
       lang: targetUserLocalization,
     };
 
-    const startCmd = this.i18nService.t('common.CMD.start', lang);
-    const continueCmd = this.i18nService.t('common.CMD.continue', lang);
-    const registeredUserCmdsPreset = this.i18nService.t('common.CMD.hub', lang);
-    const unregisteredUserCmdsPreset = `${startCmd}\n${continueCmd}`;
+    type ReplyOptionsDto = { options: QuickReplyItemDto[]; message: string };
+    const replyOptions: ReplyOptionsDto = {
+      options: [],
+      message: `${wrongReplyBaseMessage}\n\n`,
+    };
 
-    const currentCmdsPreset =
-      targetUser?.isRegistered ?? false
-        ? registeredUserCmdsPreset
-        : unregisteredUserCmdsPreset;
-    const wrongReplyMessage = `${wrongReplyBaseMessage}\n\n${currentCmdsPreset}`;
-    await this.httpRepository.sendMessage(igId, wrongReplyMessage, 'text');
+    if (targetUser?.isRegistered ?? false) {
+      replyOptions.options.push(
+        ...[
+          {
+            title: this.i18nService.t('common.CMD.hub_button', lang),
+            payload: 'hub_cmd',
+          },
+        ],
+      );
+      replyOptions.message += this.i18nService.t('common.CMD.hub', lang);
+    } else {
+      replyOptions.options.push(
+        ...[
+          {
+            title: this.i18nService.t('common.CMD.start_button', lang),
+            payload: 'continue_cmd',
+          },
+          {
+            title: this.i18nService.t('common.CMD.continue_button', lang),
+            payload: 'start_cmd',
+          },
+        ],
+      );
+      replyOptions.message += `${this.i18nService.t(
+        'common.CMD.start',
+        lang,
+      )}\n${this.i18nService.t('common.CMD.continue', lang)}`;
+    }
+
+    this.httpRepository.sendQuickReply(
+      igId,
+      replyOptions.message,
+      replyOptions.options,
+    );
+
     return;
   }
 
-  async unpredictableError(igId: string) {
+  async unpredictableError(igId: string, errorName: string, error?: string) {
     console.log('!WARNING! - !WARNING! - !WARNING!');
     console.log('UNPREDICTABLE ERROR WITH USER ', igId);
-
+    await this.telegramBot.sendMessage(
+      process.env.TG_CHAT_ID,
+      `⚠️ !WARNING! - !WARNING! - !WARNING! ⚠️\nUNPREDICTABLE ERROR WITH USER ${igId}\nError name: ${errorName}\n\nError body: ${error}`,
+      {
+        message_thread_id: 2,
+      },
+    );
     await this.httpRepository.sendMessage(
       igId,
       'An unpredictable error occurred, contact support@trial2024.com',
@@ -1400,15 +1566,19 @@ export class WebhooksService {
             return;
           }
 
-          await this.defineUserLocalization(senderId);
+          if (currentChange?.message?.text?.trim()?.length === 0) {
+            return;
+          }
+
+          // await this.defineUserLocalization(senderId);
 
           const messageFields = Object.keys(currentChange?.message ?? {});
           const currentChangeFields = Object.keys(currentChange ?? {});
 
-          const isStart = currentChange?.message?.text === '/start';
-          const isContinueRegistration =
-            currentChange?.message?.text === '/continue';
-          const isMenu = currentChange?.message?.text === '/menu';
+          // const isStart = currentChange?.message?.text === '/start';
+          // const isContinueRegistration =
+          //   currentChange?.message?.text === '/continue';
+          // const isMenu = currentChange?.message?.text === '/menu';
 
           const isReply = !!messageFields.find(
             (item) => item === 'quick_reply',
@@ -1418,17 +1588,17 @@ export class WebhooksService {
           );
           console.log('currentChangeFields : ', currentChangeFields);
 
-          console.log('isStart : ', isStart);
+          // console.log('isStart : ', isStart);
           console.log('isReply : ', isReply);
           console.log('isPostback : ', isPostback);
           console.log('senderId : ', senderId);
-          console.log('isContinueRegistration : ', isContinueRegistration);
-          console.log('isMenu : ', isMenu);
+          // console.log('isContinueRegistration : ', isContinueRegistration);
+          // console.log('isMenu : ', isMenu);
 
-          if (isStart || isContinueRegistration || isMenu) {
-            await this.handleCommand(senderId, currentChange.message.text);
-            return;
-          }
+          // if (isStart || isContinueRegistration || isMenu) {
+          //   await this.handleCommand(senderId, currentChange.message.text);
+          //   return;
+          // }
 
           //* Here we check if user send an answer to registration text question
           // TODO: Utilize all this bullshit
@@ -1440,10 +1610,10 @@ export class WebhooksService {
 
           if (
             !isReply &&
-            !isPostback &&
-            !isStart &&
-            !isContinueRegistration &&
-            !isMenu
+            !isPostback
+            // !isStart &&
+            // !isContinueRegistration &&
+            // !isMenu
           ) {
             if (isTextAnswerStep) {
               await this.handleReply({
@@ -1516,7 +1686,7 @@ export class WebhooksService {
     } catch (error) {
       await this.telegramBot.sendMessage(
         process.env.TG_CHAT_ID,
-        `⚠️⚠️⚠️\n${new Date().toISOString()}\nClear user activity function - !! FAILED !! `,
+        `⚠️⚠️⚠️\n${new Date().toISOString()}\nClear user activity function - !! FAILED !!`,
         {
           message_thread_id: 2,
         },
@@ -1524,5 +1694,13 @@ export class WebhooksService {
     }
     return;
   }
+  //#endregion
+
+  //#region TEST
+
+  async setIceBreakers() {
+    return this.httpRepository.setIceBreakers(this.i18nService);
+  }
+
   //#endregion
 }

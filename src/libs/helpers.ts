@@ -135,7 +135,7 @@ export const avatarFileValidationPipe = async ({
 
   if (!allowedAvatarFileFormats.includes(file.mimetype.split('/')[1])) {
     throw Error(
-      i18n.t('common.ERRORS.max_avatar_file_size', {
+      i18n.t('common.ERRORS.wrong_avatar_file_extension', {
         lang,
         args: { formats: allowedAvatarFileFormats.join(', ') },
       }),
