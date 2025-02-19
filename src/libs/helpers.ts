@@ -1,5 +1,4 @@
 import * as cities from 'cities.json';
-import { Country, City } from 'country-state-city';
 import { UserInfoFlowType } from './common';
 import { allowedAvatarFileFormats, maxAvatarFileSize } from './constants';
 import { AvatarFileValidationPipeDto, CityObject } from './dto';
@@ -10,7 +9,6 @@ import * as sharp from 'sharp';
 export const findCity = (input: string): string[] | string => {
   const lowercaseInput = input.toLowerCase().trim();
   const allCities = cities as CityObject[];
-  // const allCities = City.getAllCities();
 
   const exactMatch = allCities.find(
     (city) => city.name.toLowerCase() === lowercaseInput,
@@ -36,32 +34,28 @@ export const findCity = (input: string): string[] | string => {
     .map((result) => result.item.name);
 };
 
+export const calculateDistance = (
+  sLat: number,
+  sLon: number,
+  eLat: number,
+  eLon: number,
+): number => {
+  const toRad = (num: number) => (num * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(eLat - sLat);
+  const dLon = toRad(eLon - sLon);
+  const lat1 = toRad(sLat);
+  const lat2 = toRad(eLat);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export const findClosestCity = (city: string, alreadySearched: string[]) => {
   alreadySearched = [...alreadySearched.map((item) => item.toLowerCase())];
-  const calculateDistance = (
-    sLat: number,
-    sLon: number,
-    eLat: number,
-    eLon: number,
-  ) => {
-    const toRad = function (num) {
-      return (num * Math.PI) / 180;
-    };
-
-    const R = 6371;
-
-    const dLat = toRad(eLat - sLat);
-    const dLon = toRad(eLon - sLon);
-    const lat1 = toRad(sLat);
-    const lat2 = toRad(eLat);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
 
   const allCities = cities as CityObject[];
   // const allCities = City.getAllCities();
@@ -76,8 +70,6 @@ export const findClosestCity = (city: string, alreadySearched: string[]) => {
         item.country === currentCity.country &&
         !alreadySearched.includes(item.name.toLowerCase()),
     )
-    // City.getCitiesOfCountry(currentCity.countryCode)
-    //   .filter((item) => !alreadySearched.includes(item.name.toLowerCase()))
     .map((item) => ({
       ...item,
       distance: calculateDistance(
@@ -89,7 +81,6 @@ export const findClosestCity = (city: string, alreadySearched: string[]) => {
     }))
     .sort((a, b) => a.distance - b.distance)
     .slice(1);
-  // console.log('CLOSEST CC: ', closestCities.slice(0, 10));
 
   return closestCities[0];
 };

@@ -178,3 +178,15 @@ export class PaginationQuery {
   limit?: number;
   search?: string;
 }
+
+export interface CityObject {
+  name: string;
+  country: string;
+  lat: string;
+  lng: string;
+}
+
+export interface CityDistance {
+  name: string;
+  distance: number;
+}

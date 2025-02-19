@@ -47,10 +47,10 @@ model Reports {
   topic          String?
   description    String?
   createdAt      DateTime @default(now())
-  user           User     @relation("ReportCreator", fields: [userId], references: [id])
-  userId         String
-  reportedUser   User     @relation("ReportedUser", fields: [reportedUserId], references: [id])
-  reportedUserId String
+  user           User?    @relation("ReportCreator", fields: [userId], references: [id], onDelete: SetNull) //! REQUIRED WHILE CREATING
+  userId         String?
+  reportedUser   User?    @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull) //! REQUIRED WHILE CREATING
+  reportedUserId String?
 
   @@index([topic, userId, reportedUserId])
 }

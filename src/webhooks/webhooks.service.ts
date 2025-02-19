@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import * as crypto from 'crypto';
 import {
   continueCmd,
   findCity,
@@ -26,12 +25,17 @@ import {
   imageAnswersSteps,
   avatarFileValidationPipe,
   ReportEntity,
+  // findClosestCity,
+  CityDistance,
+  CityObject,
+  calculateDistance,
   findClosestCity,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
 import { S3Service } from 'src/s3/s3.service';
-import { ApifyClient } from 'apify-client';
+import * as crypto from 'crypto';
+// import * as citiesData from 'cities.json';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -42,6 +46,7 @@ const TelegramBot = require('node-telegram-bot-api');
 // TODO: CHANGE CMDs TO BUTTONS - ✅
 // TODO: IMPROVE CODE & ARCH
 // TODO: ADD EMOJI AS SIGN OF START (you know)
+// TODO: ADD ERROR TryCatchFnc with logger to tg
 // TODO: VALIDATION REGISTER DATA (Length) - ✅
 // TODO: CHECK SUBSCRIPTION FUNCTIONALITY - 🐷⚠️🐷
 // TODO: ADD GLOBAL FILTER TO CATCH TOKEN EXPIRY ERROR AND REFRESH IT
@@ -51,7 +56,8 @@ const TelegramBot = require('node-telegram-bot-api');
 @Injectable()
 export class WebhooksService {
   private readonly telegramBot = new TelegramBot(process.env.TG_ACCESS_TOKEN);
-  private readonly apifyClient: ApifyClient;
+  // private cityDistanceCache = new Map<string, CityDistance[]>();
+  // private cityNameMap = new Map<string, CityObject[]>();
 
   constructor(
     private prisma: PrismaService,
@@ -60,9 +66,7 @@ export class WebhooksService {
     private readonly redisRepo: RedisRepository,
     private readonly s3Service: S3Service,
   ) {
-    this.apifyClient = new ApifyClient({
-      token: process.env.APIFY_TOKEN,
-    });
+    // this.initializeCityCache();
   }
 
   async handleCommand(igId: string, cmd: string) {
@@ -494,7 +498,7 @@ export class WebhooksService {
   private async bioStep(igId: string, bio: string, flow: UserInfoFlowType) {
     const pureBioLength = bio.trim().length;
 
-    if (pureBioLength === 0 || pureBioLength > 100) {
+    if (pureBioLength === 0 || pureBioLength >= 100) {
       const lang = await this.defineUserLocalization(igId);
       await this.httpRepository.sendMessage(
         igId,
@@ -669,7 +673,7 @@ export class WebhooksService {
   private async nameStep(igId: string, name: string) {
     const pureNameLength = name.trim().length;
 
-    if (pureNameLength === 0 || pureNameLength > 30) {
+    if (pureNameLength === 0 || pureNameLength >= 30) {
       const lang = await this.defineUserLocalization(igId);
       await this.httpRepository.sendMessage(
         igId,
@@ -1341,6 +1345,49 @@ export class WebhooksService {
 
       return nextUser;
     };
+
+    // const findNextUser = async (initialCity: string) => {
+    //   let depth = 0;
+    //   let currentCity = initialCity;
+    //   const searchedCities: string[] = [];
+
+    //   while (depth < 2000) {
+    //     const nextUser = await this.prisma.user.findFirst({
+    //       where: {
+    //         id: {
+    //           notIn: [
+    //             targetUser.id,
+    //             ...targetUser.likedUsers,
+    //             ...targetUser.rejectedUsers,
+    //           ],
+    //         },
+    //         city: currentCity,
+    //         age: {
+    //           lte: currentAgeOption.maxAgeLimit,
+    //           gte: currentAgeOption.minAgeLimit,
+    //         },
+    //         ...(targetUser.sexInterest !== 'none' && {
+    //           sex: targetUser.sexInterest,
+    //         }),
+    //         isBlocked: false,
+    //         isActive: true,
+    //         isRegistered: true,
+    //       },
+    //       orderBy: { age: 'desc' },
+    //     });
+
+    //     if (nextUser) return nextUser;
+
+    //     searchedCities.push(currentCity);
+    //     const closest = this.findClosestCity(currentCity, searchedCities);
+    //     if (!closest) return null;
+
+    //     currentCity = closest.name;
+    //     depth++;
+    //   }
+    //   return null;
+    // };
+
     const nextUser = await findNextUser(targetUser.city);
 
     if (!nextUser) {
@@ -1541,132 +1588,103 @@ export class WebhooksService {
   }
 
   async handleIncomingWebhook(payload: any) {
-    if (payload.object === 'instagram') {
-      if (payload.entry.length !== 0) {
-        const currentEntry = payload.entry[0];
-        if (currentEntry && currentEntry.messaging) {
-          const currentChange = currentEntry.messaging[0];
-          const changeFields = Object.keys(currentChange);
-          const senderId = currentChange.sender.id;
+    if (payload.object !== 'instagram' || !payload.entry.length) {
+      return;
+    }
 
-          console.log('changeFields : ', changeFields);
-          console.log('currentChange : ', currentChange);
-          console.log(
-            'currentChange ATTACHMENT : ',
-            currentChange.message?.attachments,
-          );
+    const currentEntry = payload.entry[0];
 
-          //* We brake a cycle if its our message or it's not message hook from client
-          const availableHooks = ['message', 'postback'];
-          if (
-            !senderId ||
-            String(senderId) === process.env.trial_IG_ACCOUNT_ID ||
-            !changeFields.some((item) => availableHooks.includes(item))
-          ) {
-            return;
-          }
+    if (!currentEntry || !currentEntry.messaging.length) {
+      return;
+    }
 
-          if (currentChange?.message?.text?.trim()?.length === 0) {
-            return;
-          }
+    const currentEvent = currentEntry.messaging[0];
+    const changeFields = Object.keys(currentEvent);
 
-          // await this.defineUserLocalization(senderId);
+    console.log('changeFields : ', changeFields);
+    console.log('currentEvent : ', currentEvent);
+    console.log(
+      'currentEvent ATTACHMENT : ',
+      currentEvent.message?.attachments,
+    );
 
-          const messageFields = Object.keys(currentChange?.message ?? {});
-          const currentChangeFields = Object.keys(currentChange ?? {});
+    const {
+      sender: { id: senderId },
+      message,
+      postback,
+    } = currentEvent;
 
-          // const isStart = currentChange?.message?.text === '/start';
-          // const isContinueRegistration =
-          //   currentChange?.message?.text === '/continue';
-          // const isMenu = currentChange?.message?.text === '/menu';
+    //* We brake a cycle if its our message or it's not message hook from client
+    if (!senderId || String(senderId) === process.env.trial_IG_ACCOUNT_ID) {
+      return;
+    }
 
-          const isReply = !!messageFields.find(
-            (item) => item === 'quick_reply',
-          );
-          const isPostback = !!currentChangeFields.find(
-            (item) => item === 'postback',
-          );
-          console.log('currentChangeFields : ', currentChangeFields);
+    const eventType = !!message ? 'message' : !!postback ? 'postback' : null;
+    if (!eventType) {
+      return;
+    }
 
-          // console.log('isStart : ', isStart);
-          console.log('isReply : ', isReply);
-          console.log('isPostback : ', isPostback);
-          console.log('senderId : ', senderId);
-          // console.log('isContinueRegistration : ', isContinueRegistration);
-          // console.log('isMenu : ', isMenu);
+    switch (eventType) {
+      case 'message':
+        await this.handleMessageEvent(senderId, message);
+        break;
+      case 'postback':
+        await this.handlePostbackEvent(senderId, postback);
+        break;
+    }
 
-          // if (isStart || isContinueRegistration || isMenu) {
-          //   await this.handleCommand(senderId, currentChange.message.text);
-          //   return;
-          // }
+    return;
+  }
 
-          //* Here we check if user send an answer to registration text question
-          // TODO: Utilize all this bullshit
-          const isTextAnswerStep = await this.isTextAnswerStep(senderId);
-          console.log('isTextAnswer : ', isTextAnswerStep);
+  private async handleMessageEvent(senderId: string, message: any) {
+    const [isTextAnswerStep, isImageAnswerStep] = await Promise.all([
+      this.isTextAnswerStep(senderId),
+      this.isImageAnswerStep(senderId),
+    ]);
 
-          const isImageAnswerStep = await this.isImageAnswerStep(senderId);
-          console.log('isImageAnswerStep : ', isImageAnswerStep);
+    //* Handle quick replies
+    if (message.quick_reply) {
+      await this.handleReply({
+        senderId,
+        text: message.text || '',
+        payload: message.quick_reply.payload,
+      });
+      return;
+    }
 
-          if (
-            !isReply &&
-            !isPostback
-            // !isStart &&
-            // !isContinueRegistration &&
-            // !isMenu
-          ) {
-            if (isTextAnswerStep) {
-              await this.handleReply({
-                senderId,
-                payload: `${isTextAnswerStep}-${currentChange?.message?.text}`,
-                text: '',
-              });
-              return;
-            }
+    //* Handle text answers
+    if (isTextAnswerStep && message.text?.trim()) {
+      await this.handleReply({
+        senderId,
+        text: '',
+        payload: `${isTextAnswerStep}-${message.text.trim()}`,
+      });
+      return;
+    }
 
-            if (isImageAnswerStep) {
-              const attachment = currentChange?.message?.attachments
-                ? currentChange?.message?.attachments[0]
-                : {};
-              console.log('attachment : ', attachment);
-
-              if (attachment.type === 'image') {
-                await this.handleReply({
-                  senderId,
-                  payload: `${isImageAnswerStep}-${attachment.payload.url}`,
-                  text: '',
-                });
-                return;
-              }
-            }
-          }
-
-          if (isReply) {
-            const message = currentChange.message;
-            await this.handleReply({
-              text: message.text,
-              payload: message.quick_reply.payload,
-              senderId,
-            });
-            return;
-          }
-
-          //* Same as if (isReply)
-          if (isPostback) {
-            const postback = currentChange.postback;
-            await this.handleReply({
-              text: postback.title,
-              payload: postback.payload,
-              senderId,
-            });
-            return;
-          }
-
-          await this.wrongReply(senderId);
-          return;
-        }
+    //* Handle image attachments
+    if (isImageAnswerStep && message.attachments?.length) {
+      const [attachment] = message.attachments;
+      if (attachment.type === 'image') {
+        await this.handleReply({
+          senderId,
+          text: '',
+          payload: `${isImageAnswerStep}-${attachment.payload.url}`,
+        });
+        return;
       }
     }
+
+    //* Fallback for unhandled messages
+    await this.wrongReply(senderId);
+  }
+
+  private async handlePostbackEvent(senderId: string, postback: any) {
+    await this.handleReply({
+      senderId,
+      text: postback.title,
+      payload: postback.payload,
+    });
   }
 
   //#region CRON FNC
@@ -1696,11 +1714,92 @@ export class WebhooksService {
   }
   //#endregion
 
-  //#region TEST
+  //#region CITYs
+
+  // private getCacheKey(country: string, cityName: string): string {
+  //   return `${country.toLowerCase()}_${cityName.toLowerCase()}`;
+  // }
+
+  // public findClosestCity(
+  //   city: string,
+  //   alreadySearched: string[],
+  // ): CityDistance | null {
+  //   const candidates = this.cityNameMap.get(city.toLowerCase());
+  //   if (!candidates?.length) return null;
+
+  //   const currentCity = candidates[0];
+  //   const cacheKey = this.getCacheKey(currentCity.country, currentCity.name);
+  //   const closestCities = this.cityDistanceCache.get(cacheKey) || [];
+  //   const searchedSet = new Set(alreadySearched.map((c) => c.toLowerCase()));
+
+  //   for (const city of closestCities) {
+  //     if (!searchedSet.has(city.name.toLowerCase())) {
+  //       return city;
+  //     }
+  //   }
+  //   return null;
+  // }
+
+  // private initializeCityCache() {
+  //   const allCities = citiesData as CityObject[];
+
+  //   // Build city name lookup map
+  //   allCities.forEach((city) => {
+  //     const key = city.name.toLowerCase();
+  //     const cities = this.cityNameMap.get(key) || [];
+  //     cities.push(city);
+  //     this.cityNameMap.set(key, cities);
+  //   });
+
+  //   // Group cities by country
+  //   const citiesByCountry = new Map<string, CityObject[]>();
+  //   allCities.forEach((city) => {
+  //     const countryCities = citiesByCountry.get(city.country) || [];
+  //     countryCities.push(city);
+  //     citiesByCountry.set(city.country, countryCities);
+  //   });
+
+  //   // Precompute distances for each city
+  //   citiesByCountry.forEach((countryCities, country) => {
+  //     countryCities.forEach((city) => {
+  //       const distances = countryCities
+  //         .filter((c) => c.name !== city.name)
+  //         .map((otherCity) => ({
+  //           name: otherCity.name,
+  //           distance: calculateDistance(
+  //             parseFloat(city.lat),
+  //             parseFloat(city.lng),
+  //             parseFloat(otherCity.lat),
+  //             parseFloat(otherCity.lng),
+  //           ),
+  //         }))
+  //         .sort((a, b) => a.distance - b.distance);
+
+  //       const cacheKey = this.getCacheKey(country, city.name);
+  //       this.cityDistanceCache.set(cacheKey, distances);
+  //     });
+  //   });
+  // }
+
+  //#endregion
+
+  //#region IceBreakers
 
   async setIceBreakers() {
     return this.httpRepository.setIceBreakers(this.i18nService);
   }
+
+  //#endregion
+
+  //#region TEST
+
+  // async test() {
+  //   await this.prisma.user.delete({
+  //     where: {
+  //       id: '922129809859449',
+  //     },
+  //   });
+  // }
 
   //#endregion
 }
