@@ -69,26 +69,6 @@ export class WebhooksService {
     // this.initializeCityCache();
   }
 
-  async handleCommand(igId: string, cmd: string) {
-    switch (cmd) {
-      case '/start':
-        await this.handleStartMessage(igId);
-        return;
-
-      case '/continue':
-        await this.handleContinueRegistration(igId);
-        return;
-
-      case '/menu':
-        await this.handleMenu(igId);
-        return;
-
-      default:
-        await this.wrongReply(igId);
-        return;
-    }
-  }
-
   async handleMenu(igId: string) {
     const targetUser = await this.prisma.user.findUnique({
       where: {
@@ -96,7 +76,7 @@ export class WebhooksService {
       },
     });
     const avatarUrl = await this.s3Service.getFileUrl(targetUser.avatarUrl);
-    console.log('avatarUrl : ', avatarUrl);
+    // console.log('avatarUrl : ', avatarUrl);
 
     // TODO: Find all places like this and make a reusable fnc for it
     const languageT = { lang: targetUser.localizationLang };
@@ -196,7 +176,7 @@ export class WebhooksService {
     //* IF No - Send message to subscribe and quick reply to check
 
     const isSubscribed = true; // await this.checkSubscription();
-    console.log('isSubscribed : ', isSubscribed);
+    // console.log('isSubscribed : ', isSubscribed);
 
     if (isSubscribed) {
       await this.userInfoInitStep(igId, 'registration');
@@ -218,7 +198,7 @@ export class WebhooksService {
 
   private async checkSubscription() {
     const followersResponse = await this.httpRepository.getFollowers();
-    console.log('followersResponse : ', followersResponse);
+    // console.log('followersResponse : ', followersResponse);
   }
 
   async handleReply(dto: HandleReplyDto) {
@@ -264,9 +244,9 @@ export class WebhooksService {
 
     const flowOrigin = flow.split(':')[0];
 
-    console.log('userInfoFlow : ', userInfoFlow);
-    console.log('userInfoValue : ', userInfoValue);
-    console.log('flowOrigin : ', flowOrigin);
+    // console.log('userInfoFlow : ', userInfoFlow);
+    // console.log('userInfoValue : ', userInfoValue);
+    // console.log('flowOrigin : ', flowOrigin);
 
     if (!isUserInfoFlowType(flowOrigin)) {
       await this.unpredictableError(igId, 'User flow type error');
@@ -321,7 +301,6 @@ export class WebhooksService {
   }
 
   private async userInfoInitStep(igId: string, flow: UserInfoFlowType) {
-    console.log('userInfoInitStep');
     const targetUser = await this.prisma.user.findUnique({
       where: {
         id: igId,
@@ -570,7 +549,7 @@ export class WebhooksService {
     }
 
     let avatarKey: string;
-    console.log('validatedAvatarFile : ', validatedAvatarFile);
+    // console.log('validatedAvatarFile : ', validatedAvatarFile);
 
     try {
       avatarKey = await this.s3Service.uploadFile(validatedAvatarFile);
@@ -621,7 +600,7 @@ export class WebhooksService {
     flow: UserInfoFlowType,
   ) {
     const findCityResp = findCity(location);
-    console.log('findCityResp : ', findCityResp);
+    // console.log('findCityResp : ', findCityResp);
 
     if (findCityResp !== location && Array.isArray(findCityResp)) {
       const localizationLang = await this.defineUserLocalization(igId);
@@ -739,6 +718,11 @@ export class WebhooksService {
       });
     } catch (error) {
       console.log('LAST STEP UPDATE - FAILED : ', error);
+      await this.unpredictableError(
+        igId,
+        'setLastStep PRISMA',
+        JSON.stringify(error, null, ' '),
+      );
     }
   }
 
@@ -782,8 +766,8 @@ export class WebhooksService {
     const deactivateProfileFlow = flow.split('-')[0];
     const deactivateProfileValue = flow.split('-')[1];
 
-    console.log('deactivateProfileFlow : ', deactivateProfileFlow);
-    console.log('deactivateProfileValue : ', deactivateProfileValue);
+    // console.log('deactivateProfileFlow : ', deactivateProfileFlow);
+    // console.log('deactivateProfileValue : ', deactivateProfileValue);
 
     switch (deactivateProfileFlow) {
       case 'deactivate:init':
@@ -802,8 +786,6 @@ export class WebhooksService {
   }
 
   private async deactivateProfileInit(igId: string) {
-    console.log('deactivateInitStep');
-
     const localization = await this.defineUserLocalization(igId);
     const currentStepCmd = 'deactivate:init';
     await this.setLastStep(igId, currentStepCmd);
@@ -881,8 +863,8 @@ export class WebhooksService {
       .slice(1, reportValuePart.length)
       .join('-');
 
-    console.log('reportFlow : ', reportFlow);
-    console.log('reportValue : ', reportValue);
+    // console.log('reportFlow : ', reportFlow);
+    // console.log('reportValue : ', reportValue);
 
     // TODO: Probably need to add report:init here
     switch (reportFlow) {
@@ -993,8 +975,8 @@ export class WebhooksService {
     const matchFlow = flow.split('-')[0];
     const matchValue = flow.split('-')[1];
 
-    console.log('matchFlow : ', matchFlow);
-    console.log('matchValue : ', matchValue);
+    // console.log('matchFlow : ', matchFlow);
+    // console.log('matchValue : ', matchValue);
 
     switch (matchFlow) {
       case 'match:like':
@@ -1148,8 +1130,8 @@ export class WebhooksService {
     const scrollFlow = flow.split('-')[0];
     const scrollValue = flow.split('-')[1];
 
-    console.log('scrollFlow : ', scrollFlow);
-    console.log('scrollValue : ', scrollValue);
+    // console.log('scrollFlow : ', scrollFlow);
+    // console.log('scrollValue : ', scrollValue);
 
     switch (scrollFlow) {
       case 'scroll:start':
@@ -1270,6 +1252,8 @@ export class WebhooksService {
       }
     }
 
+    await this.httpRepository.sendMessage(targetUser.id, '✨🔎', 'text');
+
     const languageT = { lang: targetUser.localizationLang };
     const ageOptions: Record<UserSexType, any> = {
       male: {
@@ -1287,20 +1271,17 @@ export class WebhooksService {
     };
     const currentAgeOption = ageOptions[targetUser.sex];
 
-    console.log('minAgeLimit : ', currentAgeOption.minAgeLimit);
-    console.log('maxAgeLimit : ', currentAgeOption.maxAgeLimit);
-
     const findNextUser = async (
       city: string,
       alreadySearched = [],
       depth = 0,
     ) => {
       const maxDepth = 2000;
-      console.log('depth : ', depth);
-      console.log(
-        'alreadySearched : ',
-        alreadySearched[alreadySearched.length - 1],
-      );
+      // console.log('depth : ', depth);
+      // console.log(
+      //   'alreadySearched : ',
+      //   alreadySearched[alreadySearched.length - 1],
+      // );
 
       if (depth >= maxDepth) {
         return undefined;
@@ -1437,7 +1418,7 @@ export class WebhooksService {
 
     if (targetUser && targetUser.lastCmd) {
       const flowOrigin = targetUser.lastCmd.split(':')[0];
-      console.log('flowOrigin : ', flowOrigin);
+      // console.log('flowOrigin : ', flowOrigin);
 
       if (isUserInfoFlowType(flowOrigin)) {
         const currentUserInfoPrompt = createUserInfoPrompts({
@@ -1553,15 +1534,15 @@ export class WebhooksService {
       .digest('hex');
     const pureSignature = signature.split('=')[1];
 
-    console.log('pureSignature : ', pureSignature);
-    console.log('expectedSignature : ', expectedSignature);
+    // console.log('pureSignature : ', pureSignature);
+    // console.log('expectedSignature : ', expectedSignature);
 
     return expectedSignature === pureSignature;
   }
 
   async defineUserLocalization(igId: string) {
     const cachedLang = await this.redisRepo.getUserLocalizationLang(igId);
-    console.log('cachedLang : ', cachedLang);
+    // console.log('cachedLang : ', cachedLang);
 
     if (cachedLang) {
       return cachedLang;
@@ -1601,12 +1582,12 @@ export class WebhooksService {
     const currentEvent = currentEntry.messaging[0];
     const changeFields = Object.keys(currentEvent);
 
-    console.log('changeFields : ', changeFields);
-    console.log('currentEvent : ', currentEvent);
-    console.log(
-      'currentEvent ATTACHMENT : ',
-      currentEvent.message?.attachments,
-    );
+    // console.log('changeFields : ', changeFields);
+    // console.log('currentEvent : ', currentEvent);
+    // console.log(
+    //   'currentEvent ATTACHMENT : ',
+    //   currentEvent.message?.attachments,
+    // );
 
     const {
       sender: { id: senderId },
