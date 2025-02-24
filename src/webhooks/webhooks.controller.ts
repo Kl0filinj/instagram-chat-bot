@@ -15,10 +15,11 @@ import {
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
-  // @Get('test')
-  // test() {
-  //   return this.webhooksService.test();
-  // }
+  @Get('health')
+  test() {
+    // return this.webhooksService.test();
+    return 'hello !';
+  }
 
   @Cron('0 0 */2 * *')
   handleCron() {
@@ -37,9 +38,9 @@ export class WebhooksController {
     @Query('hub.challenge') challenge: string,
   ): string {
     const VERIFY_TOKEN = process.env.FB_WEBHOOK_SECRET;
-    console.log('hub.mode : ', mode);
-    console.log('hub.mode : ', token);
-    console.log('hub.mode : ', challenge);
+    // console.log('hub.mode : ', mode);
+    // console.log('hub.mode : ', token);
+    // console.log('hub.mode : ', challenge);
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('Webhook (log from webhooks service) verified');
