@@ -1,38 +1,45 @@
 version: '3.8'
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     depends_on:
-      - redis
-      - postgres
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
   redis:
     image: redis:7.2.1-alpine
     restart: always
-    container_name: 'ichat_bot_redis'
     ports:
-      - 6380:6380
+      - "6379:6379"
     volumes:
-      - redis_data:/redis/data
+      - redis_data:/data
 
   postgres:
-    container_name: 'ichat_bot_main_db'
-    image: postgres:alpine
+    image: postgres:16-alpine
     restart: always
-    env_file:
-      - .env
     environment:
-      POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   redis_data:
