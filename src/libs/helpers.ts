@@ -5,6 +5,7 @@ import { AvatarFileValidationPipeDto, CityObject } from './dto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Fuse = require('fuse.js');
 import * as sharp from 'sharp';
+import { UnauthorizedException } from '@nestjs/common';
 
 export const findCity = (input: string): string[] | string => {
   const lowercaseInput = input.toLowerCase().trim();
@@ -172,3 +173,16 @@ const compressImage = async (file: Express.Multer.File) => {
 export const getPage = (skip: number, take: number) => {
   return skip ? Math.ceil(skip / take) + 1 : 1;
 };
+
+export const getCorsSettings = (urls: string) => ({
+  origin: function (origin, callback) {
+    if (!origin || urls.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+      throw new UnauthorizedException('Not allowed by CORS');
+    }
+  },
+  credentials: true,
+  methods: ['POST', 'PUT', 'PATCH', 'DELETE', 'GET'],
+});
