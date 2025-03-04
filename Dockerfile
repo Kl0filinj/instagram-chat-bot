@@ -30,4 +30,5 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Command to run the application
-CMD ["node", "dist/src/main.js"]
+# CMD ["node", "dist/src/main.js"]
+CMD [  "npm", "run", "start:migrate:prod" ]

@@ -11,30 +11,36 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - 5432:5432
+    # ports:
+    #   - 5432:5432
     volumes:
       - database:/var/lib/postgresql/data
+    networks:
+      - backend
 
   redis:
     image: redis:7.2.1-alpine
     restart: always
     container_name: ichat_bot_redis
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     volumes:
       - redis:/data
+    networks:
+      - backend
 
   ngrok:
     image: ngrok/ngrok:latest
     restart: unless-stopped
-    ports:
-      - "4040:4040"
+    # ports:
+    #   - "4040:4040"
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTH_TOKEN}
-    command: http --domain=pug-simple-tadpole.ngrok-free.app host.docker.internal:3000
+    command: http --domain=pug-simple-tadpole.ngrok-free.app app:3000
     depends_on:
       - app
+    networks:
+      - backend
 
   app:
     build: .
@@ -44,12 +50,18 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-    ports:
-      - '3000:3000'
+    # ports:
+    #   - '3000:3000'
     depends_on:
       - database
       - redis
+    networks:
+      - backend
 
 volumes:
   database:
   redis:
+
+networks:
+  backend:
+    driver: bridge
