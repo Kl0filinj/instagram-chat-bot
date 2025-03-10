@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { cities } from './data';
 
 const prisma = new PrismaClient();
 
@@ -38,6 +39,25 @@ async function main() {
   // await prisma.user.createMany({
   //   data: generateMockUsers(100),
   // });
+  //*** Cities seed
+  for (let i = 0; i < cities.length; i++) {
+    const city = cities[i];
+    const cityEntity = {
+      name: city.name,
+      lat: city.lat,
+      lng: city.lng,
+      country: city.country,
+      admin1: city.admin1 ?? '',
+      admin2: city.admin2 ?? '',
+    };
+    await prisma.city.upsert({
+      where: {
+        name: city.name,
+      },
+      create: cityEntity,
+      update: cityEntity,
+    });
+  }
 }
 
 main()

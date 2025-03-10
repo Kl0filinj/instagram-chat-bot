@@ -30,3 +30,12 @@ export class ReportEntity {
   reportedUserId: string;
   reportedUser?: UserEntity;
 }
+
+export class CityEntity {
+  name: string;
+  lat: string;
+  lng: string;
+  country: string;
+  admin1: string | null;
+  admin2: string | null;
+}

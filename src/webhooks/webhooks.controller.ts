@@ -1,4 +1,4 @@
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { WebhooksService } from './webhooks.service';
 import {
   Controller,
@@ -17,8 +17,8 @@ export class WebhooksController {
 
   @Get('health')
   test() {
-    // return this.webhooksService.test();
-    return 'hello !';
+    return this.webhooksService.test();
+    // return 'hello !';
   }
 
   @Cron('0 0 */2 * *')

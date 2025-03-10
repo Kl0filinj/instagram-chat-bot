@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "City" ALTER COLUMN "admin1" DROP NOT NULL,
+ALTER COLUMN "admin2" DROP NOT NULL;

@@ -13,6 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// TODO: Think about city relation between User and City
 model User {
   id               String    @id @unique
   age              Int?
@@ -53,4 +54,15 @@ model Reports {
   reportedUserId String?
 
   @@index([topic, userId, reportedUserId])
+}
+
+model City {
+  name    String  @id @unique
+  lat     String
+  lng     String
+  country String
+  admin1  String?
+  admin2  String?
+
+  @@index([country])
 }

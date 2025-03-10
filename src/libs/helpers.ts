@@ -1,15 +1,17 @@
-import * as cities from 'cities.json';
 import { UserInfoFlowType } from './common';
 import { allowedAvatarFileFormats, maxAvatarFileSize } from './constants';
-import { AvatarFileValidationPipeDto, CityObject } from './dto';
+import { AvatarFileValidationPipeDto } from './dto';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Fuse = require('fuse.js');
 import * as sharp from 'sharp';
 import { UnauthorizedException } from '@nestjs/common';
+import { CityEntity } from './entities';
 
-export const findCity = (input: string): string[] | string => {
+export const findCity = (
+  allCities: CityEntity[],
+  input: string,
+): string[] | string => {
   const lowercaseInput = input.toLowerCase().trim();
-  const allCities = cities as CityObject[];
 
   const exactMatch = allCities.find(
     (city) => city.name.toLowerCase() === lowercaseInput,
@@ -55,11 +57,12 @@ export const calculateDistance = (
   return R * c;
 };
 
-export const findClosestCity = (city: string, alreadySearched: string[]) => {
+export const findClosestCity = (
+  allCities: CityEntity[],
+  city: string,
+  alreadySearched: string[],
+) => {
   alreadySearched = [...alreadySearched.map((item) => item.toLowerCase())];
-
-  const allCities = cities as CityObject[];
-  // const allCities = City.getAllCities();
 
   const currentCity = allCities.find(
     (item) => item.name.toLowerCase() === city.toLowerCase(),

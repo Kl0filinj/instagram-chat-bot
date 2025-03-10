@@ -1,17 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
-  continueCmd,
   findCity,
   HandleReplyDto,
-  HandleStartMessageDto,
   HttpRepository,
   isUserInfoFlowType,
-  menuCmd,
   QuickReplyItemDto,
-  RegistrationPayloadDto,
   createUserInfoPrompts,
-  startAge,
-  startCmd,
   templateButtons,
   UserEntity,
   UserInfoFlowType,
@@ -25,10 +19,6 @@ import {
   imageAnswersSteps,
   avatarFileValidationPipe,
   ReportEntity,
-  // findClosestCity,
-  CityDistance,
-  CityObject,
-  calculateDistance,
   findClosestCity,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -52,6 +42,8 @@ const TelegramBot = require('node-telegram-bot-api');
 // TODO: ADD GLOBAL FILTER TO CATCH TOKEN EXPIRY ERROR AND REFRESH IT
 // TODO: PROJECT DOCUMENTATION
 // TODO: Add Ice Breakers (OPT) - ✅
+
+// TODO: ADD COUNTRY LIST warning while registration !!!!!!!!
 
 @Injectable()
 export class WebhooksService {
@@ -197,12 +189,12 @@ export class WebhooksService {
   // }
 
   private async checkSubscription() {
-    const followersResponse = await this.httpRepository.getFollowers();
+    // const followersResponse = await this.httpRepository.getFollowers();
     // console.log('followersResponse : ', followersResponse);
   }
 
   async handleReply(dto: HandleReplyDto) {
-    const { senderId, text, payload } = dto;
+    const { senderId, payload } = dto;
     const generalFlow = payload.split(':')[0];
     console.log('payload (FLOW) : ', payload);
 
@@ -599,7 +591,9 @@ export class WebhooksService {
     location: string,
     flow: UserInfoFlowType,
   ) {
-    const findCityResp = findCity(location);
+    //TODO: Add cache here
+    const allCities = await this.prisma.city.findMany();
+    const findCityResp = findCity(allCities, location);
     // console.log('findCityResp : ', findCityResp);
 
     if (findCityResp !== location && Array.isArray(findCityResp)) {
@@ -764,7 +758,7 @@ export class WebhooksService {
 
   private async deactivateProfileFlow(flow: string, igId: string) {
     const deactivateProfileFlow = flow.split('-')[0];
-    const deactivateProfileValue = flow.split('-')[1];
+    // const deactivateProfileValue = flow.split('-')[1];
 
     // console.log('deactivateProfileFlow : ', deactivateProfileFlow);
     // console.log('deactivateProfileValue : ', deactivateProfileValue);
@@ -1270,13 +1264,15 @@ export class WebhooksService {
       },
     };
     const currentAgeOption = ageOptions[targetUser.sex];
+    //TODO: Add cache here
+    const allCities = await this.prisma.city.findMany();
 
     const findNextUser = async (
       city: string,
       alreadySearched = [],
       depth = 0,
     ) => {
-      const maxDepth = 2000;
+      const maxDepth = 99;
       // console.log('depth : ', depth);
       // console.log(
       //   'alreadySearched : ',
@@ -1315,7 +1311,11 @@ export class WebhooksService {
 
       if (!nextUser) {
         const newAlreadySearched = [...alreadySearched, city];
-        const closestCity = findClosestCity(city, newAlreadySearched);
+        const closestCity = findClosestCity(
+          allCities,
+          city,
+          newAlreadySearched,
+        );
 
         if (!closestCity) {
           return undefined;
@@ -1580,7 +1580,7 @@ export class WebhooksService {
     }
 
     const currentEvent = currentEntry.messaging[0];
-    const changeFields = Object.keys(currentEvent);
+    // const changeFields = Object.keys(currentEvent);
 
     // console.log('changeFields : ', changeFields);
     // console.log('currentEvent : ', currentEvent);
@@ -1696,6 +1696,10 @@ export class WebhooksService {
   //#endregion
 
   //#region CITYs
+
+  async test() {
+    return this.prisma.city.findMany();
+  }
 
   // private getCacheKey(country: string, cityName: string): string {
   //   return `${country.toLowerCase()}_${cityName.toLowerCase()}`;
