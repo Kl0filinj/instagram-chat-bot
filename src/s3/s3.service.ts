@@ -63,10 +63,13 @@ export class S3Service {
   }
 
   async getFileUrl(key: string) {
+    if (key.includes('http')) {
+      return key;
+    }
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
     });
-    return await getSignedUrl(this.s3, command, { expiresIn: 3600 });
+    return await getSignedUrl(this.s3, command); //* Maybe return the expiration { expiresIn: 3600 }
   }
 }

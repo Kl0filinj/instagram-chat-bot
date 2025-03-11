@@ -299,7 +299,7 @@ export class WebhooksService {
       },
     });
 
-    if (targetUser) {
+    if (targetUser && flow === 'registration') {
       await this.handleMenu(igId);
       return;
     }
@@ -1418,7 +1418,7 @@ export class WebhooksService {
 
     if (targetUser && targetUser.lastCmd) {
       const flowOrigin = targetUser.lastCmd.split(':')[0];
-      // console.log('flowOrigin : ', flowOrigin);
+      console.log('@---@ flowOrigin @---@ : ', flowOrigin);
 
       if (isUserInfoFlowType(flowOrigin)) {
         const currentUserInfoPrompt = createUserInfoPrompts({
@@ -1601,15 +1601,18 @@ export class WebhooksService {
     }
 
     const eventType = !!message ? 'message' : !!postback ? 'postback' : null;
+    console.log('@@eventType@@ : ', eventType);
     if (!eventType) {
       return;
     }
 
     switch (eventType) {
       case 'message':
+        console.log('@@MESSAGE@@ : ', message);
         await this.handleMessageEvent(senderId, message);
         break;
       case 'postback':
+        console.log('@@POSTBACK@@ : ', postback);
         await this.handlePostbackEvent(senderId, postback);
         break;
     }
@@ -1698,7 +1701,10 @@ export class WebhooksService {
   //#region CITYs
 
   async test() {
-    return this.prisma.city.findMany();
+    const cities = await this.prisma.city.findMany();
+    const users = await this.prisma.user.findMany();
+
+    return { cities, users };
   }
 
   // private getCacheKey(country: string, cityName: string): string {

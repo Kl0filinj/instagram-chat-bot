@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { cities } from './data';
+import { faker } from '@faker-js/faker';
+import { createId } from '@paralleldrive/cuid2';
 
 const prisma = new PrismaClient();
 
@@ -56,6 +58,66 @@ async function main() {
       },
       create: cityEntity,
       update: cityEntity,
+    });
+  }
+
+  //*** Test users seed
+  const mockCities = [
+    'Istanbul',
+    'London',
+    'Paris',
+    'Berlin',
+    'Amsterdam',
+    'New York',
+    'Vienna',
+    'Barcelona',
+  ];
+
+  // TODO: Comment it before push
+  // await prisma.user.deleteMany({
+  //   where: {
+  //     id: {
+  //       notIn: ['922129809859449'],
+  //     },
+  //   },
+  // });
+
+  for (const city of mockCities) {
+    const countOfUsers = await prisma.user.count({
+      where: {
+        city,
+      },
+    });
+
+    if (countOfUsers >= 30) {
+      continue;
+    }
+
+    const users = Array.from({ length: 30 }, () => {
+      const sex = faker.helpers.arrayElement(['male', 'female']);
+      const sexInterest = faker.helpers.arrayElement([
+        'male',
+        'female',
+        'none',
+      ]);
+
+      return {
+        id: createId(),
+        name: `${faker.person.firstName()} ${faker.person.lastName()}`,
+        age: faker.number.int({ min: 18, max: 23 }),
+        sex,
+        sexInterest,
+        city: city,
+        bio: faker.lorem.sentence({ max: 10, min: 5 }),
+        avatarUrl: faker.image.avatar(),
+        isRegistered: true,
+        localizationLang: 'en',
+      };
+    });
+
+    await prisma.user.createMany({
+      data: users,
+      skipDuplicates: true,
     });
   }
 }

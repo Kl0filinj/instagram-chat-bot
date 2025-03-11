@@ -1,5 +1,4 @@
 import {
-  QuickReplyItemDto,
   QuickReplyTemplateItemDto,
   RegistrationPromptOption,
   TemplateButtonsDto,

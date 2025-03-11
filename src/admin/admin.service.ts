@@ -16,9 +16,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { createId } from '@paralleldrive/cuid2';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AdminService {
@@ -110,7 +110,7 @@ export class AdminService {
     try {
       await this.prisma.user.create({
         data: {
-          id: uuidv4(),
+          id: createId(),
           ...dto,
         },
       });
