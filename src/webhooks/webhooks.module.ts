@@ -8,6 +8,9 @@ import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import { HelpersService } from './helpers/helpers.service';
 import * as path from 'path';
 import { S3Service } from 'src/s3/s3.service';
+import { TelegramService } from 'src/telegram/telegram.service';
+import { APP_FILTER } from '@nestjs/core';
+import { WebhookExceptionFilter } from 'src/libs/filters/webhooks-exception.filter';
 
 @Module({
   imports: [
@@ -30,6 +33,11 @@ import { S3Service } from 'src/s3/s3.service';
     HttpRepository,
     RedisRepository,
     HelpersService,
+    TelegramService,
+    {
+      provide: APP_FILTER,
+      useClass: WebhookExceptionFilter,
+    },
   ],
 })
 export class WebhooksModule {}

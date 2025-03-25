@@ -8,6 +8,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { HelpersModule } from './webhooks/helpers/helpers.module';
 import { S3Module } from './s3/s3.module';
 import { AdminModule } from './admin/admin.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AdminModule } from './admin/admin.module';
     HelpersModule,
     S3Module,
     AdminModule,
+    TelegramModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -73,8 +73,8 @@ export class TranslateDto {
   lang: string;
 }
 
-export class UserInfoLanguageOptionsDto extends TranslateDto {
-  flow: UserInfoFlowType;
+export class UserInfoOptionsDto extends TranslateDto {
+  flow: string;
 }
 
 export class AvatarFileValidationPipeDto extends TranslateDto {
@@ -90,8 +90,8 @@ export class CityObject {
   country: string;
   lat: string;
   lng: string;
-  admin1: string;
-  admin2: string;
+  admin1?: string;
+  admin2?: string;
 }
 
 export class LoginDto {
@@ -177,13 +177,6 @@ export class PaginationQuery {
   skip?: number;
   limit?: number;
   search?: string;
-}
-
-export interface CityObject {
-  name: string;
-  country: string;
-  lat: string;
-  lng: string;
 }
 
 export interface CityDistance {

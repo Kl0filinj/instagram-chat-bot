@@ -3,7 +3,7 @@ import {
   RegistrationPromptOption,
   TemplateButtonsDto,
   TranslateDto,
-  UserInfoLanguageOptionsDto,
+  UserInfoOptionsDto,
 } from './dto';
 import { HttpRepository } from './repositories';
 import { RedisClientType } from 'redis';
@@ -41,7 +41,7 @@ const userInfoLanguageOptions = ({
   flow,
   i18n,
   lang,
-}: UserInfoLanguageOptionsDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
   options: [
     { title: '🇺🇸 English', payload: `${flow}:language-en` },
     { title: '🇩🇪 German', payload: `${flow}:language-de` },
@@ -49,11 +49,45 @@ const userInfoLanguageOptions = ({
   message: i18n.t('common.REGISTRATION.language', { lang }),
 });
 
+// TODO: Check if u made right with options.payload CMDs
+const userInfoResubmitOptions = ({
+  i18n,
+  lang,
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
+  options: [
+    {
+      title: i18n.t('common.REGISTRATION.OPTIONS.all', { lang }),
+      payload: `resubmit:init`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.OPTIONS.avatar', { lang }),
+      payload: `resubmit:avatar`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.OPTIONS.bio', { lang }),
+      payload: `resubmit:bio`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.OPTIONS.age', { lang }),
+      payload: `resubmit:age`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.OPTIONS.language', { lang }),
+      payload: `resubmit:language`,
+    },
+    {
+      title: i18n.t('common.REGISTRATION.OPTIONS.location', { lang }),
+      payload: `resubmit:location`,
+    },
+  ],
+  message: i18n.t('common.REGISTRATION.OPTIONS.options_message', { lang }),
+});
+
 const userInfoAgeOptions = ({
   flow,
   i18n,
   lang,
-}: UserInfoLanguageOptionsDto): RegistrationPromptOption => {
+}: UserInfoOptionsDto): RegistrationPromptOption => {
   return {
     options: Array.from({ length: 13 }, (_, index) => {
       const currentNumber = index + startAge + 1;
@@ -71,7 +105,7 @@ const userInfoSexOptions = ({
   flow,
   i18n,
   lang,
-}: UserInfoLanguageOptionsDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
   options: [
     {
       title: i18n.t('common.REGISTRATION.SEX.male', { lang }),
@@ -90,7 +124,7 @@ const userInfoSexInterestOptions = ({
   flow,
   i18n,
   lang,
-}: UserInfoLanguageOptionsDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
   options: [
     {
       title: i18n.t('common.REGISTRATION.SEX_INTEREST.no_metter', { lang }),
@@ -141,8 +175,13 @@ const userInfoNameOptions = ({
 
 type PromptFunction = (httpRepo: HttpRepository, igId: string) => Promise<any>;
 export const createUserInfoPrompts = (
-  dto: UserInfoLanguageOptionsDto,
+  dto: UserInfoOptionsDto,
 ): Record<string, PromptFunction> => ({
+  [`resubmit:options`]: async (httpRepo, igId) => {
+    const options = userInfoResubmitOptions(dto);
+    return httpRepo.sendQuickReply(igId, options.message, options.options);
+  },
+
   [`${dto.flow}:language`]: async (httpRepo, igId) => {
     const options = userInfoLanguageOptions(dto);
     return httpRepo.sendQuickReply(igId, options.message, options.options);
