@@ -191,3 +191,11 @@ export class CallUserInfoStepDto {
   lang: string;
   isCall?: boolean;
 }
+
+export class HandleBackStepDto extends OmitType(CallUserInfoStepDto, [
+  'flow',
+  'calledStep',
+  'isCall',
+]) {
+  currentStep: string;
+}

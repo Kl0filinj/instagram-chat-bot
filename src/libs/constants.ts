@@ -37,6 +37,24 @@ export const textAnswersSteps = [
 
 export const imageAnswersSteps = ['registration:avatar', 'resubmit:avatar'];
 
+export const userInfoMethodsChain = [
+  'language',
+  'age',
+  'sex',
+  'sexInterest',
+  'bio',
+  'avatar',
+  'location',
+  'name',
+];
+
+const createUserInfoBackOption = (flow: string, step: string) => {
+  if (flow !== 'registration') {
+    return [];
+  }
+  return [{ title: '⬅️ Back', payload: `registration:${step}-[back]` }];
+};
+
 const userInfoLanguageOptions = ({
   flow,
   i18n,
@@ -89,14 +107,17 @@ const userInfoAgeOptions = ({
   lang,
 }: UserInfoOptionsDto): RegistrationPromptOption => {
   return {
-    options: Array.from({ length: 13 }, (_, index) => {
-      const currentNumber = index + startAge + 1;
+    options: [
+      ...createUserInfoBackOption(flow, 'age'),
+      ...Array.from({ length: 12 }, (_, index) => {
+        const currentNumber = index + startAge + 1;
 
-      return {
-        title: currentNumber.toString(),
-        payload: `${flow}:age-${currentNumber}`,
-      };
-    }),
+        return {
+          title: currentNumber.toString(),
+          payload: `${flow}:age-${currentNumber}`,
+        };
+      }),
+    ],
     message: i18n.t('common.REGISTRATION.age', { lang }),
   };
 };
@@ -107,6 +128,7 @@ const userInfoSexOptions = ({
   lang,
 }: UserInfoOptionsDto): RegistrationPromptOption => ({
   options: [
+    ...createUserInfoBackOption(flow, 'sex'),
     {
       title: i18n.t('common.REGISTRATION.SEX.male', { lang }),
       payload: `${flow}:sex-male`,
@@ -126,6 +148,7 @@ const userInfoSexInterestOptions = ({
   lang,
 }: UserInfoOptionsDto): RegistrationPromptOption => ({
   options: [
+    ...createUserInfoBackOption(flow, 'sexInterest'),
     {
       title: i18n.t('common.REGISTRATION.SEX_INTEREST.no_metter', { lang }),
       payload: `${flow}:sexInterest-none`,
@@ -143,16 +166,20 @@ const userInfoSexInterestOptions = ({
 });
 
 const userInfoBioOptions = ({
+  flow,
   i18n,
   lang,
-}: TranslateDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
+  options: [...createUserInfoBackOption(flow, 'bio')],
   message: i18n.t('common.REGISTRATION.bio', { lang }),
 });
 
 const userInfoAvatarOptions = ({
+  flow,
   i18n,
   lang,
-}: TranslateDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
+  options: [...createUserInfoBackOption(flow, 'avatar')],
   message: i18n.t('common.REGISTRATION.avatar', {
     lang,
     args: { maxSize: '2' },
@@ -160,16 +187,20 @@ const userInfoAvatarOptions = ({
 });
 
 const userInfoLocationOptions = ({
+  flow,
   i18n,
   lang,
-}: TranslateDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
+  options: [...createUserInfoBackOption(flow, 'location')],
   message: i18n.t('common.REGISTRATION.location', { lang }),
 });
 
 const userInfoNameOptions = ({
+  flow,
   i18n,
   lang,
-}: TranslateDto): RegistrationPromptOption => ({
+}: UserInfoOptionsDto): RegistrationPromptOption => ({
+  options: [...createUserInfoBackOption(flow, 'name')],
   message: i18n.t('common.REGISTRATION.name', { lang }),
 });
 
@@ -202,17 +233,43 @@ export const createUserInfoPrompts = (
     return httpRepo.sendQuickReply(igId, options.message, options.options);
   },
 
-  [`${dto.flow}:bio`]: async (httpRepo, igId) =>
-    httpRepo.sendMessage(igId, userInfoBioOptions(dto).message, 'text'),
+  [`${dto.flow}:bio`]: async (httpRepo, igId) => {
+    if (dto.flow === 'registration') {
+      const options = userInfoBioOptions(dto);
+      return httpRepo.sendQuickReply(igId, options.message, options.options);
+    }
+    return httpRepo.sendMessage(igId, userInfoBioOptions(dto).message, 'text');
+  },
 
-  [`${dto.flow}:avatar`]: async (httpRepo, igId) =>
-    httpRepo.sendMessage(igId, userInfoAvatarOptions(dto).message, 'text'),
-
-  [`${dto.flow}:location`]: async (httpRepo, igId) =>
-    httpRepo.sendMessage(igId, userInfoLocationOptions(dto).message, 'text'),
-
-  [`${dto.flow}:name`]: async (httpRepo, igId) =>
-    httpRepo.sendMessage(igId, userInfoNameOptions(dto).message, 'text'),
+  [`${dto.flow}:avatar`]: async (httpRepo, igId) => {
+    if (dto.flow === 'registration') {
+      const options = userInfoAvatarOptions(dto);
+      return httpRepo.sendQuickReply(igId, options.message, options.options);
+    }
+    return httpRepo.sendMessage(
+      igId,
+      userInfoAvatarOptions(dto).message,
+      'text',
+    );
+  },
+  [`${dto.flow}:location`]: async (httpRepo, igId) => {
+    if (dto.flow === 'registration') {
+      const options = userInfoLocationOptions(dto);
+      return httpRepo.sendQuickReply(igId, options.message, options.options);
+    }
+    return httpRepo.sendMessage(
+      igId,
+      userInfoLocationOptions(dto).message,
+      'text',
+    );
+  },
+  [`${dto.flow}:name`]: async (httpRepo, igId) => {
+    if (dto.flow === 'registration') {
+      const options = userInfoNameOptions(dto);
+      return httpRepo.sendQuickReply(igId, options.message, options.options);
+    }
+    return httpRepo.sendMessage(igId, userInfoNameOptions(dto).message, 'text');
+  },
 });
 
 //TODO: Check usage of this 2 elements (reportOptions, createReportPrompts)
@@ -272,7 +329,7 @@ export const templateButtons = ({
     {
       type: 'postback',
       title: i18n.t('common.MENU.resubmit', { lang }),
-      payload: 'resubmit:init',
+      payload: 'resubmit:options',
     },
     {
       type: 'postback',
