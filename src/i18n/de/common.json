@@ -16,7 +16,7 @@
     "message_length": "Die Nachricht ist zu lang\nLimit ist {length} Zeichen"
   },
   "REGISTRATION": {
-    "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden?",
+    "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden ?",
     "age": "Wie alt sind Sie ?",
     "SEX": {
       "message": "Wählen Sie jetzt Ihr Geschlecht",
@@ -31,9 +31,18 @@
     },
     "bio": "Erzählen Sie uns ein wenig über sich und wen Sie suchen",
     "avatar": "Laden Sie Ihren Avatar hoch.\nDie Bildgröße muss weniger als {maxSize} MB betragen.",
-    "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben)?",
+    "location": "In welcher Stadt befinden Sie sich (Stadtname auf EN eingeben) ?",
     "location_available": "Verfügbare Städte",
-    "name": "Wie ist Ihr Name?"
+    "name": "Wie ist Ihr Name ?",
+    "OPTIONS": {
+      "all": "Alle",
+      "avatar": "Avatar",
+      "bio": "Bio",
+      "age": "Alter",
+      "language": "Sprache",
+      "location": "Standort",
+      "options_message": "Was wollen Sie bearbeiten ?"
+    }
   },
   "SCROLL": {
     "menu": "💤 Menü",

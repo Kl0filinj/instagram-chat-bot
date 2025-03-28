@@ -95,20 +95,6 @@ export const isUserInfoFlowType = (
   return value === 'registration' || value === 'resubmit';
 };
 
-export const tryCatchPrismaWrapper = async <T>(
-  arg: any,
-  alternative: any,
-): Promise<T> => {
-  let result: T;
-  try {
-    result = await arg;
-  } catch (err) {
-    return alternative;
-  }
-
-  return result;
-};
-
 export const avatarFileValidationPipe = async ({
   file,
   i18n,

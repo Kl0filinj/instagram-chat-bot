@@ -20,34 +20,26 @@ import {
   avatarFileValidationPipe,
   ReportEntity,
   findClosestCity,
+  tryCatchWrapper,
+  CallUserInfoStepDto,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
 import { S3Service } from 'src/s3/s3.service';
 import * as crypto from 'crypto';
+import { TelegramService } from 'src/telegram/telegram.service';
 // import * as citiesData from 'cities.json';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const TelegramBot = require('node-telegram-bot-api');
 
-// TODO: REPORT SYSTEM - ✅
-// TODO: DEACTIVATE USER PROFILE FUNCTIONALITY - ✅
-// TODO: ADD PHOTOS UPLOAD STEP/FUNCTIONALITY - ✅
-// TODO: IMPROVE CITY SEARCH - ✅
-// TODO: CHANGE CMDs TO BUTTONS - ✅
-// TODO: IMPROVE CODE & ARCH
-// TODO: ADD EMOJI AS SIGN OF START (you know)
-// TODO: ADD ERROR TryCatchFnc with logger to tg
-// TODO: VALIDATION REGISTER DATA (Length) - ✅
 // TODO: CHECK SUBSCRIPTION FUNCTIONALITY - 🐷⚠️🐷
 // TODO: ADD GLOBAL FILTER TO CATCH TOKEN EXPIRY ERROR AND REFRESH IT
 // TODO: PROJECT DOCUMENTATION
-// TODO: Add Ice Breakers (OPT) - ✅
-
 // TODO: ADD COUNTRY LIST warning while registration !!!!!!!!
+
+// TODO: ADD OPTIONS FOR RESUBMIT: All; Avatar; Description; Age; Language; Location - ✅
+// TODO: ADD 'Back' Button to Registration flow
 
 @Injectable()
 export class WebhooksService {
-  private readonly telegramBot = new TelegramBot(process.env.TG_ACCESS_TOKEN);
   // private cityDistanceCache = new Map<string, CityDistance[]>();
   // private cityNameMap = new Map<string, CityObject[]>();
 
@@ -57,6 +49,7 @@ export class WebhooksService {
     private readonly i18nService: I18nService,
     private readonly redisRepo: RedisRepository,
     private readonly s3Service: S3Service,
+    private readonly telegramService: TelegramService,
   ) {
     // this.initializeCityCache();
   }
@@ -112,7 +105,7 @@ export class WebhooksService {
     // }
 
     if (targetUser && targetUser.lastCmd) {
-      const flowOrigin = targetUser.lastCmd.split(':')[0];
+      const flowOrigin = targetUser.lastCmd?.split(':')[0];
 
       if (isUserInfoFlowType(flowOrigin)) {
         const currentUserInfoPrompt = createUserInfoPrompts({
@@ -120,10 +113,8 @@ export class WebhooksService {
           i18n: this.i18nService,
           lang: targetUser.localizationLang,
         });
-        await currentUserInfoPrompt[targetUser.lastCmd](
-          this.httpRepository,
-          igId,
-        );
+        const lastCmd = targetUser.lastCmd?.split('::')[0];
+        await currentUserInfoPrompt[lastCmd](this.httpRepository, igId);
         return;
       }
     }
@@ -227,6 +218,8 @@ export class WebhooksService {
     }
   }
 
+  //#region User Info Flow
+
   async userInfoFlow(flow: string, igId: string) {
     const userInfoFlow = flow.split('-')[0];
     const userInfoValuePart = flow.split('-');
@@ -235,13 +228,26 @@ export class WebhooksService {
       .join('-');
 
     const flowOrigin = flow.split(':')[0];
+    const isCall = flow.includes('::call') || false;
 
-    // console.log('userInfoFlow : ', userInfoFlow);
-    // console.log('userInfoValue : ', userInfoValue);
-    // console.log('flowOrigin : ', flowOrigin);
+    console.log('userInfoFlow : ', userInfoFlow);
+    console.log('userInfoValue : ', userInfoValue);
+    console.log('flowOrigin : ', flowOrigin);
 
     if (!isUserInfoFlowType(flowOrigin)) {
       await this.unpredictableError(igId, 'User flow type error');
+      return;
+    }
+
+    if (isCall) {
+      const lang = await this.defineUserLocalization(igId);
+      await this.callUserInfoStep({
+        igId,
+        flow: flowOrigin,
+        calledStep: userInfoFlow.split(':')[1],
+        lang,
+        isCall,
+      });
       return;
     }
 
@@ -304,8 +310,20 @@ export class WebhooksService {
       return;
     }
 
+    if (flow === 'resubmit') {
+      const currentUserInfoPrompt = createUserInfoPrompts({
+        flow,
+        i18n: this.i18nService,
+        lang: targetUser.localizationLang,
+      });
+      await currentUserInfoPrompt['resubmit:options'](
+        this.httpRepository,
+        igId,
+      );
+      return;
+    }
+
     const currentStepCmd = `${flow}:language`;
-    // await this.setLastStep(igId, currentStepCmd);
     const currentUserInfoPrompt = createUserInfoPrompts({
       flow,
       i18n: this.i18nService,
@@ -320,16 +338,17 @@ export class WebhooksService {
     language: string,
     flow: UserInfoFlowType,
   ) {
+    let user: UserEntity;
     try {
       if (flow === 'registration') {
-        await this.prisma.user.create({
+        user = await this.prisma.user.create({
           data: {
             id: igId,
             localizationLang: language,
           },
         });
       } else if (flow === 'resubmit') {
-        await this.prisma.user.update({
+        user = await this.prisma.user.update({
           where: {
             id: igId,
           },
@@ -350,47 +369,49 @@ export class WebhooksService {
       return;
     }
 
-    const currentStepCmd = `${flow}:age`;
-    await this.setLastStep(igId, `${flow}:age`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
+      return;
+    }
+
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
-      lang: language,
+      lang: user.localizationLang,
+      calledStep: 'age',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
   private async ageStep(igId: string, age: number, flow: UserInfoFlowType) {
-    let user: UserEntity;
-
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           age,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: ageStep PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'ageStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
+        errorName: 'ageStep PRISMA',
+      },
+    );
+
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
       return;
     }
 
-    const currentStepCmd = `${flow}:sex`;
-    await this.setLastStep(igId, currentStepCmd);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'sex',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -399,34 +420,27 @@ export class WebhooksService {
     sex: UserSexType,
     flow: UserInfoFlowType,
   ) {
-    let user: UserEntity;
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           sex,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: sexStep PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'sexStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'sexStep PRISMA',
+      },
+    );
 
-    const currentStepCmd = `${flow}:sexInterest`;
-    await this.setLastStep(igId, `${flow}:sexInterest`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'sexInterest',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -435,34 +449,27 @@ export class WebhooksService {
     sexInterest: UserSexType,
     flow: UserInfoFlowType,
   ) {
-    let user: UserEntity;
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           sexInterest,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: sexInterest PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'sexInterest PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'sexInterest PRISMA',
+      },
+    );
 
-    const currentStepCmd = `${flow}:bio`;
-    await this.setLastStep(igId, `${flow}:bio`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'bio',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -482,34 +489,33 @@ export class WebhooksService {
       return;
     }
 
-    let user: UserEntity;
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           bio,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: bioStep PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'bioStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
+        errorName: 'bioStep PRISMA',
+      },
+    );
+
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
       return;
     }
 
-    const currentStepCmd = `${flow}:avatar`;
-    await this.setLastStep(igId, `${flow}:avatar`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'avatar',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -540,49 +546,42 @@ export class WebhooksService {
       return;
     }
 
-    let avatarKey: string;
+    const avatarKey = await tryCatchWrapper<string>(
+      this.s3Service.uploadFile(validatedAvatarFile),
+      {
+        igId,
+        errorName: 'avatarStep S3 uploadFile',
+      },
+    );
     // console.log('validatedAvatarFile : ', validatedAvatarFile);
 
-    try {
-      avatarKey = await this.s3Service.uploadFile(validatedAvatarFile);
-    } catch (error) {
-      console.log('ERROR: avatarStep S3 uploadFile', error?.message);
-      await this.unpredictableError(
-        igId,
-        'avatarStep S3 uploadFile',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
-
-    let user: UserEntity;
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           avatarUrl: avatarKey,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: avatarStep PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'avatarStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
+        errorName: 'avatarStep PRISMA',
+      },
+    );
+
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
       return;
     }
 
-    const currentStepCmd = `${flow}:location`;
-    await this.setLastStep(igId, `${flow}:location`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'location',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -612,34 +611,33 @@ export class WebhooksService {
       return;
     }
 
-    let user: UserEntity;
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           city: location,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: locationStep PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'locationStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
+        errorName: 'locationStep PRISMA',
+      },
+    );
+
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
       return;
     }
 
-    const currentStepCmd = `${flow}:name`;
-    await this.setLastStep(igId, `${flow}:name`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'name',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -659,9 +657,8 @@ export class WebhooksService {
       return;
     }
 
-    let user: UserEntity;
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
@@ -670,16 +667,12 @@ export class WebhooksService {
           isRegistered: true,
           lastCmd: null,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: nameStep PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'nameStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'nameStep PRISMA',
+      },
+    );
 
     const avatarUrl = await this.s3Service.getFileUrl(user.avatarUrl);
     const languageT = { lang: user.localizationLang };
@@ -700,24 +693,57 @@ export class WebhooksService {
     });
   }
 
+  private async callUserInfoStep(dto: CallUserInfoStepDto) {
+    const { flow, igId, calledStep, lang, isCall = false } = dto;
+
+    const currentStepCmd = `${flow}:${calledStep}`;
+    await this.setLastStep(igId, `${currentStepCmd}${isCall ? '::call' : ''}`);
+    const currentUserInfoPrompt = createUserInfoPrompts({
+      flow,
+      i18n: this.i18nService,
+      lang,
+    });
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
+  }
+
+  private async handleCallTypeStep(igId: string) {
+    await tryCatchWrapper(
+      this.prisma.user.update({
+        where: {
+          id: igId,
+        },
+        data: {
+          lastCmd: null,
+        },
+      }),
+      {
+        igId,
+        errorName: 'handleCallTypeStep PRISMA',
+      },
+    );
+    await this.handleMenu(igId);
+    return;
+  }
+
+  //#endregion
+  //#region HHH
+
   private async setLastStep(igId: string, lastStep: string) {
-    try {
-      await this.prisma.user.update({
+    await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           lastCmd: lastStep,
         },
-      });
-    } catch (error) {
-      console.log('LAST STEP UPDATE - FAILED : ', error);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'setLastStep PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-    }
+        errorName: 'setLastStep PRISMA',
+      },
+    );
   }
 
   async isTextAnswerStep(igId: string) {
@@ -731,8 +757,9 @@ export class WebhooksService {
       return false;
     }
 
-    if (textAnswersSteps.includes(targetUser.lastCmd)) {
-      return targetUser.lastCmd;
+    const lastCmd = targetUser.lastCmd?.split('::')[0];
+    if (textAnswersSteps.includes(lastCmd)) {
+      return lastCmd;
     }
 
     return false;
@@ -749,8 +776,9 @@ export class WebhooksService {
       return false;
     }
 
-    if (imageAnswersSteps.includes(targetUser.lastCmd)) {
-      return targetUser.lastCmd;
+    const lastCmd = targetUser.lastCmd?.split('::')[0];
+    if (imageAnswersSteps.includes(lastCmd)) {
+      return lastCmd;
     }
 
     return false;
@@ -792,10 +820,8 @@ export class WebhooksService {
   }
 
   private async deactivateProfileExecute(igId: string) {
-    let user: UserEntity;
-
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
@@ -803,16 +829,12 @@ export class WebhooksService {
           isActive: false,
           lastCmd: null,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: deactivateProfileExecute PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'deactivateProfileExecute PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'deactivateProfileExecute PRISMA',
+      },
+    );
 
     await this.httpRepository.sendMessage(
       igId,
@@ -827,24 +849,21 @@ export class WebhooksService {
   }
 
   private async deactivateProfileCancel(igId: string) {
-    try {
-      await this.prisma.user.update({
+    await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           lastCmd: null,
         },
-      });
-    } catch (error) {
-      console.log('ERROR: deactivateProfileCancel PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'deactivateProfileCancel PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'deactivateProfileCancel PRISMA',
+      },
+    );
+
     await this.handleMenu(igId);
 
     return;
@@ -896,10 +915,8 @@ export class WebhooksService {
       },
     });
 
-    let report: ReportEntity;
-
-    try {
-      report = await this.prisma.$transaction(async (tx) => {
+    const report = await tryCatchWrapper<ReportEntity>(
+      this.prisma.$transaction(async (tx) => {
         const findReport = await tx.reports.findFirst({
           where: {
             userId: igId,
@@ -933,19 +950,15 @@ export class WebhooksService {
         });
 
         return updReport;
-      });
-    } catch (error) {
-      console.log('ERROR: report send PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'report send PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'report send PRISMA',
+      },
+    );
 
     //* Send reportText to tg
-    const telegramRes = await this.telegramBot.sendMessage(
+    const telegramRes = await this.telegramService.sendMessage(
       process.env.TG_CHAT_ID,
       `REPORT FROM USER\n\nFROM:\nName: ${ourUser.name}\nId: ${ourUser.id}\n\nTO:\nId: ${report.reportedUserId}\n\nMessage :"${reportText}"`,
       {
@@ -1074,19 +1087,23 @@ export class WebhooksService {
   }
 
   private async matchReport(igId: string, reportedUserId: string) {
-    let user: UserEntity;
-
-    try {
-      user = await this.prisma.user.update({
+    const user = await tryCatchWrapper<UserEntity>(
+      this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
           lastCmd: 'report:send',
         },
-      });
+      }),
+      {
+        igId,
+        errorName: 'matchReport user PRISMA',
+      },
+    );
 
-      await this.prisma.reports.create({
+    await tryCatchWrapper<UserEntity>(
+      this.prisma.reports.create({
         data: {
           reportedUser: {
             connect: {
@@ -1099,16 +1116,12 @@ export class WebhooksService {
             },
           },
         },
-      });
-    } catch (error) {
-      console.log('ERROR: matchReport PRISMA', error?.message);
-      await this.unpredictableError(
+      }),
+      {
         igId,
-        'matchReport PRISMA',
-        JSON.stringify(error, null, ' '),
-      );
-      return;
-    }
+        errorName: 'matchReport report PRISMA',
+      },
+    );
 
     await this.httpRepository.sendMessage(
       igId,
@@ -1223,27 +1236,20 @@ export class WebhooksService {
 
   private async scrollSendNextUser(targetUser: UserEntity) {
     if (!targetUser.isActive) {
-      try {
-        await this.prisma.user.update({
+      await tryCatchWrapper<UserEntity>(
+        this.prisma.user.update({
           where: {
             id: targetUser.id,
           },
           data: {
             isActive: true,
           },
-        });
-      } catch (error) {
-        console.log(
-          'ERROR: scrollSendNextUser:set isActive:true PRISMA',
-          error?.message,
-        );
-        await this.unpredictableError(
-          targetUser.id,
-          'scrollSendNextUser:set isActive:true PRISMA',
-          JSON.stringify(error, null, ' '),
-        );
-        return;
-      }
+        }),
+        {
+          igId: targetUser.id,
+          errorName: 'scrollSendNextUser:set isActive:true PRISMA',
+        },
+      );
     }
 
     await this.httpRepository.sendMessage(targetUser.id, '✨🔎', 'text');
@@ -1426,10 +1432,8 @@ export class WebhooksService {
           i18n: this.i18nService,
           lang: targetUser.localizationLang,
         });
-        await currentUserInfoPrompt[targetUser.lastCmd](
-          this.httpRepository,
-          igId,
-        );
+        const lastCmd = targetUser.lastCmd.split('::')[0];
+        await currentUserInfoPrompt[lastCmd](this.httpRepository, igId);
         return;
       }
 
@@ -1512,7 +1516,7 @@ export class WebhooksService {
   async unpredictableError(igId: string, errorName: string, error?: string) {
     console.log('!WARNING! - !WARNING! - !WARNING!');
     console.log('UNPREDICTABLE ERROR WITH USER ', igId);
-    await this.telegramBot.sendMessage(
+    await this.telegramService.sendMessage(
       process.env.TG_CHAT_ID,
       `⚠️ !WARNING! - !WARNING! - !WARNING! ⚠️\nUNPREDICTABLE ERROR WITH USER ${igId}\nError name: ${errorName}\n\nError body: ${error}`,
       {
@@ -1686,7 +1690,7 @@ export class WebhooksService {
         },
       });
     } catch (error) {
-      await this.telegramBot.sendMessage(
+      await this.telegramService.sendMessage(
         process.env.TG_CHAT_ID,
         `⚠️⚠️⚠️\n${new Date().toISOString()}\nClear user activity function - !! FAILED !!`,
         {

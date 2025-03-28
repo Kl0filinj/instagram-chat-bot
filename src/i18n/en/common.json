@@ -33,7 +33,16 @@
     "avatar": "Upload you avatar picture\nSize of the picture have to be less than {maxSize} MB",
     "location": "Which city are you in (Type city name on EN) ?",
     "location_available": "Available cities",
-    "name": "What’s your name ?"
+    "name": "What’s your name ?",
+    "OPTIONS": {
+      "all": "All",
+      "avatar": "Avatar",
+      "bio": "Bio",
+      "age": "Age",
+      "language": "Language",
+      "location": "Location",
+      "options_message": "What do you wanna edit ?"
+    }
   },
   "SCROLL": {
     "menu": "💤 Menu",
