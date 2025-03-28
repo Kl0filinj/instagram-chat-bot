@@ -61,23 +61,23 @@ const userInfoResubmitOptions = ({
     },
     {
       title: i18n.t('common.REGISTRATION.OPTIONS.avatar', { lang }),
-      payload: `resubmit:avatar`,
+      payload: `resubmit:avatar::call`,
     },
     {
       title: i18n.t('common.REGISTRATION.OPTIONS.bio', { lang }),
-      payload: `resubmit:bio`,
+      payload: `resubmit:bio::call`,
     },
     {
       title: i18n.t('common.REGISTRATION.OPTIONS.age', { lang }),
-      payload: `resubmit:age`,
+      payload: `resubmit:age::call`,
     },
     {
       title: i18n.t('common.REGISTRATION.OPTIONS.language', { lang }),
-      payload: `resubmit:language`,
+      payload: `resubmit:language::call`,
     },
     {
       title: i18n.t('common.REGISTRATION.OPTIONS.location', { lang }),
-      payload: `resubmit:location`,
+      payload: `resubmit:location::call`,
     },
   ],
   message: i18n.t('common.REGISTRATION.OPTIONS.options_message', { lang }),

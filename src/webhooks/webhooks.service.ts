@@ -21,6 +21,7 @@ import {
   ReportEntity,
   findClosestCity,
   tryCatchWrapper,
+  CallUserInfoStepDto,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -34,7 +35,7 @@ import { TelegramService } from 'src/telegram/telegram.service';
 // TODO: PROJECT DOCUMENTATION
 // TODO: ADD COUNTRY LIST warning while registration !!!!!!!!
 
-// TODO: ADD OPTIONS FOR RESUBMIT: All; Avatar; Description; Age; Language; Location; (YOU STOPPED AT: 1 - add tranlation for this options; 2 - create a mechanism to call steps by request (check continue flow and userInfoInitStep))
+// TODO: ADD OPTIONS FOR RESUBMIT: All; Avatar; Description; Age; Language; Location - ✅
 // TODO: ADD 'Back' Button to Registration flow
 
 @Injectable()
@@ -104,7 +105,7 @@ export class WebhooksService {
     // }
 
     if (targetUser && targetUser.lastCmd) {
-      const flowOrigin = targetUser.lastCmd.split(':')[0];
+      const flowOrigin = targetUser.lastCmd?.split(':')[0];
 
       if (isUserInfoFlowType(flowOrigin)) {
         const currentUserInfoPrompt = createUserInfoPrompts({
@@ -112,10 +113,8 @@ export class WebhooksService {
           i18n: this.i18nService,
           lang: targetUser.localizationLang,
         });
-        await currentUserInfoPrompt[targetUser.lastCmd](
-          this.httpRepository,
-          igId,
-        );
+        const lastCmd = targetUser.lastCmd?.split('::')[0];
+        await currentUserInfoPrompt[lastCmd](this.httpRepository, igId);
         return;
       }
     }
@@ -229,13 +228,26 @@ export class WebhooksService {
       .join('-');
 
     const flowOrigin = flow.split(':')[0];
+    const isCall = flow.includes('::call') || false;
 
-    // console.log('userInfoFlow : ', userInfoFlow);
-    // console.log('userInfoValue : ', userInfoValue);
-    // console.log('flowOrigin : ', flowOrigin);
+    console.log('userInfoFlow : ', userInfoFlow);
+    console.log('userInfoValue : ', userInfoValue);
+    console.log('flowOrigin : ', flowOrigin);
 
     if (!isUserInfoFlowType(flowOrigin)) {
       await this.unpredictableError(igId, 'User flow type error');
+      return;
+    }
+
+    if (isCall) {
+      const lang = await this.defineUserLocalization(igId);
+      await this.callUserInfoStep({
+        igId,
+        flow: flowOrigin,
+        calledStep: userInfoFlow.split(':')[1],
+        lang,
+        isCall,
+      });
       return;
     }
 
@@ -298,8 +310,20 @@ export class WebhooksService {
       return;
     }
 
+    if (flow === 'resubmit') {
+      const currentUserInfoPrompt = createUserInfoPrompts({
+        flow,
+        i18n: this.i18nService,
+        lang: targetUser.localizationLang,
+      });
+      await currentUserInfoPrompt['resubmit:options'](
+        this.httpRepository,
+        igId,
+      );
+      return;
+    }
+
     const currentStepCmd = `${flow}:language`;
-    // await this.setLastStep(igId, currentStepCmd);
     const currentUserInfoPrompt = createUserInfoPrompts({
       flow,
       i18n: this.i18nService,
@@ -314,16 +338,17 @@ export class WebhooksService {
     language: string,
     flow: UserInfoFlowType,
   ) {
+    let user: UserEntity;
     try {
       if (flow === 'registration') {
-        await this.prisma.user.create({
+        user = await this.prisma.user.create({
           data: {
             id: igId,
             localizationLang: language,
           },
         });
       } else if (flow === 'resubmit') {
-        await this.prisma.user.update({
+        user = await this.prisma.user.update({
           where: {
             id: igId,
           },
@@ -344,14 +369,18 @@ export class WebhooksService {
       return;
     }
 
-    const currentStepCmd = `${flow}:age`;
-    await this.setLastStep(igId, `${flow}:age`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
+      return;
+    }
+
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
-      lang: language,
+      lang: user.localizationLang,
+      calledStep: 'age',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -371,14 +400,18 @@ export class WebhooksService {
       },
     );
 
-    const currentStepCmd = `${flow}:sex`;
-    await this.setLastStep(igId, currentStepCmd);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
+      return;
+    }
+
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'sex',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -402,14 +435,12 @@ export class WebhooksService {
       },
     );
 
-    const currentStepCmd = `${flow}:sexInterest`;
-    await this.setLastStep(igId, `${flow}:sexInterest`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'sexInterest',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -433,14 +464,12 @@ export class WebhooksService {
       },
     );
 
-    const currentStepCmd = `${flow}:bio`;
-    await this.setLastStep(igId, `${flow}:bio`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'bio',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -475,14 +504,18 @@ export class WebhooksService {
       },
     );
 
-    const currentStepCmd = `${flow}:avatar`;
-    await this.setLastStep(igId, `${flow}:avatar`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
+      return;
+    }
+
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'avatar',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -537,14 +570,18 @@ export class WebhooksService {
       },
     );
 
-    const currentStepCmd = `${flow}:location`;
-    await this.setLastStep(igId, `${flow}:location`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
+      return;
+    }
+
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'location',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -589,14 +626,18 @@ export class WebhooksService {
       },
     );
 
-    const currentStepCmd = `${flow}:name`;
-    await this.setLastStep(igId, `${flow}:name`);
-    const currentUserInfoPrompt = createUserInfoPrompts({
+    const isCall = user.lastCmd?.includes('::call') || false;
+    if (isCall) {
+      await this.handleCallTypeStep(igId);
+      return;
+    }
+
+    await this.callUserInfoStep({
+      igId,
       flow,
-      i18n: this.i18nService,
       lang: user.localizationLang,
+      calledStep: 'name',
     });
-    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
     return;
   }
 
@@ -652,7 +693,41 @@ export class WebhooksService {
     });
   }
 
+  private async callUserInfoStep(dto: CallUserInfoStepDto) {
+    const { flow, igId, calledStep, lang, isCall = false } = dto;
+
+    const currentStepCmd = `${flow}:${calledStep}`;
+    await this.setLastStep(igId, `${currentStepCmd}${isCall ? '::call' : ''}`);
+    const currentUserInfoPrompt = createUserInfoPrompts({
+      flow,
+      i18n: this.i18nService,
+      lang,
+    });
+    await currentUserInfoPrompt[currentStepCmd](this.httpRepository, igId);
+    return;
+  }
+
+  private async handleCallTypeStep(igId: string) {
+    await tryCatchWrapper(
+      this.prisma.user.update({
+        where: {
+          id: igId,
+        },
+        data: {
+          lastCmd: null,
+        },
+      }),
+      {
+        igId,
+        errorName: 'handleCallTypeStep PRISMA',
+      },
+    );
+    await this.handleMenu(igId);
+    return;
+  }
+
   //#endregion
+  //#region HHH
 
   private async setLastStep(igId: string, lastStep: string) {
     await tryCatchWrapper<UserEntity>(
@@ -682,8 +757,9 @@ export class WebhooksService {
       return false;
     }
 
-    if (textAnswersSteps.includes(targetUser.lastCmd)) {
-      return targetUser.lastCmd;
+    const lastCmd = targetUser.lastCmd?.split('::')[0];
+    if (textAnswersSteps.includes(lastCmd)) {
+      return lastCmd;
     }
 
     return false;
@@ -700,8 +776,9 @@ export class WebhooksService {
       return false;
     }
 
-    if (imageAnswersSteps.includes(targetUser.lastCmd)) {
-      return targetUser.lastCmd;
+    const lastCmd = targetUser.lastCmd?.split('::')[0];
+    if (imageAnswersSteps.includes(lastCmd)) {
+      return lastCmd;
     }
 
     return false;
@@ -1355,10 +1432,8 @@ export class WebhooksService {
           i18n: this.i18nService,
           lang: targetUser.localizationLang,
         });
-        await currentUserInfoPrompt[targetUser.lastCmd](
-          this.httpRepository,
-          igId,
-        );
+        const lastCmd = targetUser.lastCmd.split('::')[0];
+        await currentUserInfoPrompt[lastCmd](this.httpRepository, igId);
         return;
       }
 

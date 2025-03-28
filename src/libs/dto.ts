@@ -183,3 +183,11 @@ export interface CityDistance {
   name: string;
   distance: number;
 }
+
+export class CallUserInfoStepDto {
+  flow: UserInfoFlowType;
+  igId: string;
+  calledStep: string;
+  lang: string;
+  isCall?: boolean;
+}
