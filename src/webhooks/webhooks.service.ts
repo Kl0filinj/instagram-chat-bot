@@ -22,6 +22,8 @@ import {
   findClosestCity,
   tryCatchWrapper,
   CallUserInfoStepDto,
+  HandleBackStepDto,
+  userInfoMethodsChain,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -36,7 +38,7 @@ import { TelegramService } from 'src/telegram/telegram.service';
 // TODO: ADD COUNTRY LIST warning while registration !!!!!!!!
 
 // TODO: ADD OPTIONS FOR RESUBMIT: All; Avatar; Description; Age; Language; Location - ✅
-// TODO: ADD 'Back' Button to Registration flow
+// TODO: ADD 'Back' Button to Registration flow - ✅
 
 @Injectable()
 export class WebhooksService {
@@ -239,8 +241,8 @@ export class WebhooksService {
       return;
     }
 
+    const lang = await this.defineUserLocalization(igId);
     if (isCall) {
-      const lang = await this.defineUserLocalization(igId);
       await this.callUserInfoStep({
         igId,
         flow: flowOrigin,
@@ -252,6 +254,9 @@ export class WebhooksService {
     }
 
     switch (userInfoFlow) {
+      case 'resubmit:options':
+        await this.userInfoOptionsStep(igId, lang);
+        return;
       case 'resubmit:init':
       case 'registration:init':
         await this.userInfoInitStep(igId, flowOrigin);
@@ -262,40 +267,46 @@ export class WebhooksService {
         return;
       case 'resubmit:age':
       case 'registration:age':
-        await this.ageStep(igId, parseInt(userInfoValue), flowOrigin);
+        await this.ageStep(igId, userInfoValue, flowOrigin, lang);
         return;
       case 'resubmit:sex':
       case 'registration:sex':
-        await this.sexStep(igId, userInfoValue as UserSexType, flowOrigin);
+        await this.sexStep(igId, userInfoValue, flowOrigin, lang);
         return;
       case 'resubmit:sexInterest':
       case 'registration:sexInterest':
-        await this.sexInterestStep(
-          igId,
-          userInfoValue as UserSexType,
-          flowOrigin,
-        );
+        await this.sexInterestStep(igId, userInfoValue, flowOrigin, lang);
         return;
       case 'resubmit:bio':
       case 'registration:bio':
-        await this.bioStep(igId, userInfoValue, flowOrigin);
+        await this.bioStep(igId, userInfoValue, flowOrigin, lang);
         return;
       case 'resubmit:avatar':
       case 'registration:avatar':
-        await this.avatarStep(igId, userInfoValue, flowOrigin);
+        await this.avatarStep(igId, userInfoValue, flowOrigin, lang);
         return;
       case 'resubmit:location':
       case 'registration:location':
-        await this.locationStep(igId, userInfoValue, flowOrigin);
+        await this.locationStep(igId, userInfoValue, flowOrigin, lang);
         return;
       case 'resubmit:name':
       case 'registration:name':
-        await this.nameStep(igId, userInfoValue);
+        await this.nameStep(igId, userInfoValue, lang);
         return;
       default:
         await this.wrongReply(igId);
         return;
     }
+  }
+
+  private async userInfoOptionsStep(igId: string, lang: string) {
+    const currentUserInfoPrompt = createUserInfoPrompts({
+      flow: 'resubmit',
+      i18n: this.i18nService,
+      lang,
+    });
+    await currentUserInfoPrompt['resubmit:options'](this.httpRepository, igId);
+    return;
   }
 
   private async userInfoInitStep(igId: string, flow: UserInfoFlowType) {
@@ -310,18 +321,18 @@ export class WebhooksService {
       return;
     }
 
-    if (flow === 'resubmit') {
-      const currentUserInfoPrompt = createUserInfoPrompts({
-        flow,
-        i18n: this.i18nService,
-        lang: targetUser.localizationLang,
-      });
-      await currentUserInfoPrompt['resubmit:options'](
-        this.httpRepository,
-        igId,
-      );
-      return;
-    }
+    // if (flow === 'resubmit') {
+    //   const currentUserInfoPrompt = createUserInfoPrompts({
+    //     flow,
+    //     i18n: this.i18nService,
+    //     lang: targetUser.localizationLang,
+    //   });
+    //   await currentUserInfoPrompt['resubmit:options'](
+    //     this.httpRepository,
+    //     igId,
+    //   );
+    //   return;
+    // }
 
     const currentStepCmd = `${flow}:language`;
     const currentUserInfoPrompt = createUserInfoPrompts({
@@ -338,16 +349,23 @@ export class WebhooksService {
     language: string,
     flow: UserInfoFlowType,
   ) {
-    let user: UserEntity;
+    let user: UserEntity = await this.prisma.user.findFirst({
+      where: {
+        id: igId,
+      },
+    });
+
+    const isResubmit = flow === 'resubmit';
+    const isRegistration = flow === 'registration';
     try {
-      if (flow === 'registration') {
+      if (isRegistration && !user) {
         user = await this.prisma.user.create({
           data: {
             id: igId,
             localizationLang: language,
           },
         });
-      } else if (flow === 'resubmit') {
+      } else if (isResubmit || (isRegistration && !!user)) {
         user = await this.prisma.user.update({
           where: {
             id: igId,
@@ -384,14 +402,24 @@ export class WebhooksService {
     return;
   }
 
-  private async ageStep(igId: string, age: number, flow: UserInfoFlowType) {
+  private async ageStep(
+    igId: string,
+    age: string,
+    flow: UserInfoFlowType,
+    lang: string,
+  ) {
+    if (age === '[back]') {
+      await this.handleBackStep({ currentStep: 'age', igId, lang });
+      return;
+    }
+
     const user = await tryCatchWrapper<UserEntity>(
       this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
-          age,
+          age: parseInt(age as string),
         },
       }),
       {
@@ -417,16 +445,22 @@ export class WebhooksService {
 
   private async sexStep(
     igId: string,
-    sex: UserSexType,
+    sex: UserSexType | string,
     flow: UserInfoFlowType,
+    lang: string,
   ) {
+    if (sex === '[back]') {
+      await this.handleBackStep({ currentStep: 'sex', igId, lang });
+      return;
+    }
+
     const user = await tryCatchWrapper<UserEntity>(
       this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
-          sex,
+          sex: sex as UserSexType,
         },
       }),
       {
@@ -446,16 +480,22 @@ export class WebhooksService {
 
   private async sexInterestStep(
     igId: string,
-    sexInterest: UserSexType,
+    sexInterest: UserSexType | string,
     flow: UserInfoFlowType,
+    lang: string,
   ) {
+    if (sexInterest === '[back]') {
+      await this.handleBackStep({ currentStep: 'sexInterest', igId, lang });
+      return;
+    }
+
     const user = await tryCatchWrapper<UserEntity>(
       this.prisma.user.update({
         where: {
           id: igId,
         },
         data: {
-          sexInterest,
+          sexInterest: sexInterest as UserSexType,
         },
       }),
       {
@@ -473,7 +513,17 @@ export class WebhooksService {
     return;
   }
 
-  private async bioStep(igId: string, bio: string, flow: UserInfoFlowType) {
+  private async bioStep(
+    igId: string,
+    bio: string,
+    flow: UserInfoFlowType,
+    lang: string,
+  ) {
+    if (bio === '[back]') {
+      await this.handleBackStep({ currentStep: 'bio', igId, lang });
+      return;
+    }
+
     const pureBioLength = bio.trim().length;
 
     if (pureBioLength === 0 || pureBioLength >= 100) {
@@ -523,9 +573,14 @@ export class WebhooksService {
     igId: string,
     igAvatarUrl: string,
     flow: UserInfoFlowType,
+    lang: string,
   ) {
+    if (igAvatarUrl === '[back]') {
+      await this.handleBackStep({ currentStep: 'avatar', igId, lang });
+      return;
+    }
+
     let validatedAvatarFile: Express.Multer.File;
-    const lang = await this.defineUserLocalization(igId);
 
     try {
       const avatarFile = await this.httpRepository.getIgImageFile(igAvatarUrl);
@@ -589,7 +644,13 @@ export class WebhooksService {
     igId: string,
     location: string,
     flow: UserInfoFlowType,
+    lang: string,
   ) {
+    if (location === '[back]') {
+      await this.handleBackStep({ currentStep: 'location', igId, lang });
+      return;
+    }
+
     //TODO: Add cache here
     const allCities = await this.prisma.city.findMany();
     const findCityResp = findCity(allCities, location);
@@ -641,7 +702,12 @@ export class WebhooksService {
     return;
   }
 
-  private async nameStep(igId: string, name: string) {
+  private async nameStep(igId: string, name: string, lang: string) {
+    if (name === '[back]') {
+      await this.handleBackStep({ currentStep: 'name', igId, lang });
+      return;
+    }
+
     const pureNameLength = name.trim().length;
 
     if (pureNameLength === 0 || pureNameLength >= 30) {
@@ -723,6 +789,25 @@ export class WebhooksService {
       },
     );
     await this.handleMenu(igId);
+    return;
+  }
+
+  private async handleBackStep(dto: HandleBackStepDto) {
+    const { currentStep, ...rest } = dto;
+    const currentStepIndex = userInfoMethodsChain.findIndex(
+      (val) => val === currentStep,
+    );
+    const calledStep =
+      currentStepIndex === 0
+        ? userInfoMethodsChain[0]
+        : userInfoMethodsChain[currentStepIndex - 1];
+
+    const callUserInfoStepDto: CallUserInfoStepDto = {
+      ...rest,
+      flow: 'registration',
+      calledStep,
+    };
+    await this.callUserInfoStep(callUserInfoStepDto);
     return;
   }
 
