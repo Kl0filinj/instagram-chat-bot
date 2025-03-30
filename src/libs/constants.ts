@@ -1,4 +1,5 @@
 import {
+  QuickReplyButtonsDto,
   QuickReplyTemplateItemDto,
   RegistrationPromptOption,
   TemplateButtonsDto,
@@ -26,6 +27,8 @@ export const options = {
 };
 
 export const textAnswersSteps = [
+  'registration:age',
+  'resubmit:age',
   'registration:bio',
   'resubmit:bio',
   'registration:location',
@@ -313,11 +316,49 @@ export const createDeactivateProfilePrompts = (
   },
 });
 
+const scrollQuickReplyOptions = ({
+  i18n,
+  lang,
+}: TranslateDto): RegistrationPromptOption => ({
+  options: [
+    {
+      title: i18n.t('common.SCROLL.menu', { lang }),
+      payload: 'scroll:menu',
+    },
+    {
+      title: i18n.t('common.SCROLL.like', { lang }),
+      payload: 'scroll:like',
+    },
+    {
+      title: i18n.t('common.SCROLL.dislike', { lang }),
+      payload: 'scroll:dislike',
+    },
+    {
+      title: i18n.t('common.MATCH.report', { lang }),
+      payload: 'match:report',
+    },
+  ],
+  message: i18n.t('common.SCROLL.options', { lang }),
+});
+
+export const quickReplyButtons = (
+  dto: QuickReplyButtonsDto,
+): Record<'scroll', PromptFunction> => ({
+  scroll: async (httpRepo, igId) => {
+    const options = scrollQuickReplyOptions(dto);
+    const mappedOptions = options.options.map((item) => ({
+      ...item,
+      payload: `${item.payload}-${dto.targetIgId}`,
+    }));
+    return httpRepo.sendQuickReply(igId, options.message, mappedOptions);
+  },
+});
+
 export const templateButtons = ({
   i18n,
   lang,
 }: TemplateButtonsDto): Record<
-  'hub' | 'scroll' | 'match',
+  'hub' | 'match',
   QuickReplyTemplateItemDto[]
 > => ({
   hub: [
@@ -335,23 +376,6 @@ export const templateButtons = ({
       type: 'postback',
       title: i18n.t('common.MENU.deactivate', { lang }),
       payload: 'deactivate:init',
-    },
-  ],
-  scroll: [
-    {
-      type: 'postback',
-      title: i18n.t('common.SCROLL.menu', { lang }),
-      payload: 'scroll:menu',
-    },
-    {
-      type: 'postback',
-      title: i18n.t('common.SCROLL.like', { lang }),
-      payload: 'scroll:like',
-    },
-    {
-      type: 'postback',
-      title: i18n.t('common.SCROLL.dislike', { lang }),
-      payload: 'scroll:dislike',
     },
   ],
   match: [
