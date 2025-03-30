@@ -24,6 +24,7 @@ import {
   CallUserInfoStepDto,
   HandleBackStepDto,
   userInfoMethodsChain,
+  quickReplyButtons,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -39,6 +40,7 @@ import { TelegramService } from 'src/telegram/telegram.service';
 
 // TODO: ADD OPTIONS FOR RESUBMIT: All; Avatar; Description; Age; Language; Location - ✅
 // TODO: ADD 'Back' Button to Registration flow - ✅
+// TODO: CHANGE SCROLLED USER BUTTONS APPEARANCE - ✅
 
 @Injectable()
 export class WebhooksService {
@@ -410,6 +412,21 @@ export class WebhooksService {
   ) {
     if (age === '[back]') {
       await this.handleBackStep({ currentStep: 'age', igId, lang });
+      return;
+    }
+
+    const trimmedAge = +age.trim();
+
+    if (isNaN(trimmedAge) || trimmedAge < 15 || trimmedAge > 35) {
+      const lang = await this.defineUserLocalization(igId);
+      await this.httpRepository.sendMessage(
+        igId,
+        this.i18nService.t('common.ERRORS.message_length', {
+          lang,
+          args: { length: 100 },
+        }),
+        'text',
+      );
       return;
     }
 
@@ -1355,7 +1372,7 @@ export class WebhooksService {
       },
     };
     const currentAgeOption = ageOptions[targetUser.sex];
-    //TODO: Add cache here
+    //TODO: ADD CACHE HERE !!!!!!!!!!!!
     const allCities = await this.prisma.city.findMany();
 
     const findNextUser = async (
@@ -1489,14 +1506,14 @@ export class WebhooksService {
       title: `${nameT}: ${nextUser.name}`,
       subtitle: `${ageT}: ${nextUser.age}\n${locationT}: ${nextUser.city}\n${aboutT}: ${nextUser.bio}`,
       image_url: avatarUrl,
-      buttons: templateButtons({
-        i18n: this.i18nService,
-        ...languageT,
-      }).scroll.map((item) => ({
-        ...item,
-        payload: `${item.payload}-${nextUser.id}`,
-      })),
     });
+
+    const quickReplyButtonsOptions = quickReplyButtons({
+      i18n: this.i18nService,
+      lang: targetUser.localizationLang,
+      targetIgId: nextUser.id,
+    });
+    await quickReplyButtonsOptions.scroll(this.httpRepository, targetUser.id);
     return;
   }
 
@@ -1589,7 +1606,7 @@ export class WebhooksService {
       )}\n${this.i18nService.t('common.CMD.continue', lang)}`;
     }
 
-    this.httpRepository.sendQuickReply(
+    await this.httpRepository.sendQuickReply(
       igId,
       replyOptions.message,
       replyOptions.options,

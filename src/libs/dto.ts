@@ -60,7 +60,7 @@ export class SendTemplateDto {
   title: string;
   image_url: string;
   subtitle: string;
-  buttons: QuickReplyTemplateItemDto[];
+  buttons?: QuickReplyTemplateItemDto[];
 }
 
 export class IgUserProfileIfoDto {
@@ -71,6 +71,10 @@ export class IgUserProfileIfoDto {
 export class TranslateDto {
   i18n: I18nService;
   lang: string;
+}
+
+export class QuickReplyButtonsDto extends TranslateDto {
+  targetIgId: string;
 }
 
 export class UserInfoOptionsDto extends TranslateDto {

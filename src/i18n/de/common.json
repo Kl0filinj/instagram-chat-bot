@@ -13,7 +13,8 @@
     "max_file_size": "Die hochgeladene Datei überschreitet die maximale zulässige Größe von {maxSize} MB.\nBitte laden Sie eine kleinere Datei hoch und versuchen Sie es erneut",
     "wrong_avatar_file_extension": "Die hochgeladene Datei ist kein gültiges Bildformat.\nBitte laden Sie eine Datei in einem der folgenden Formate hoch: {formats}",
     "avatar_upload_unpredictable": "Unvorhersehbarer Fehler beim Hochladen des Avatars\nVersuchen Sie es in wenigen Sekunden erneut oder wenden Sie sich an den Support\nsupport@trial2024.com",
-    "message_length": "Die Nachricht ist zu lang\nLimit ist {length} Zeichen"
+    "message_length": "Die Nachricht ist zu lang\nLimit ist {length} Zeichen",
+    "age": "Mindestalter: 15 Jahre\nHöchstalter: 35 Jahre"
   },
   "REGISTRATION": {
     "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden ?",
@@ -49,7 +50,8 @@
     "like": "👍 Like",
     "aside_like": "Jemand mochte Sie ❤️",
     "dislike": "👎 Dislike",
-    "no_users": "Es tut uns leid, aber wir haben keine aktiven Nutzer mehr in der {city}"
+    "no_users": "Es tut uns leid, aber wir haben keine aktiven Nutzer mehr in der {city}",
+    "options": "🧐"
   },
   "MENU": {
     "start": "Blättern beginnen",

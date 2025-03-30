@@ -13,7 +13,8 @@
     "max_avatar_file_size": "The file you uploaded exceeds the maximum allowed size of {maxSize} MB.\nPlease upload a smaller file and try again",
     "wrong_avatar_file_extension": "The file you uploaded is not a valid image format.\nPlease upload a file in one of the following formats: {formats}",
     "avatar_upload_unpredictable": "Unpredictable error occurred while uploading avatar\nTry again in few seconds or contact the support\nsupport@trial2024.com",
-    "message_length": "The message is too long\nLimit is {length} characters"
+    "message_length": "The message is too long\nLimit is {length} characters",
+    "age": "Min age is 15\nMax age is 35"
   },
   "REGISTRATION": {
     "language": "Lets get your personal card done. What languange do you prefer to use ?",
@@ -49,7 +50,8 @@
     "like": "👍 Like",
     "aside_like": "Someone liked you ❤️",
     "dislike": "👎 Dislike",
-    "no_users": "Sorry, but we've run out of active users in the {city}"
+    "no_users": "Sorry, but we've run out of active users in the {city}",
+    "options": "🧐"
   },
   "MENU": {
     "start": "Start scrolling",
