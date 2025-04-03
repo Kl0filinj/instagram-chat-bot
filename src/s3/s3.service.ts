@@ -51,7 +51,7 @@ export class S3Service {
       const response: PutObjectCommandOutput = await this.s3.send(
         new PutObjectCommand(input),
       );
-      console.log('S3 RESPONSE : ', response);
+      // console.log('S3 RESPONSE : ', response);
       if (response.$metadata.httpStatusCode === 200) {
         return key;
       }

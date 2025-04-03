@@ -194,6 +194,7 @@ export class CallUserInfoStepDto {
   calledStep: string;
   lang: string;
   isCall?: boolean;
+  saveLastStep?: boolean;
 }
 
 export class HandleBackStepDto extends OmitType(CallUserInfoStepDto, [

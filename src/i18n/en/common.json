@@ -14,11 +14,13 @@
     "wrong_avatar_file_extension": "The file you uploaded is not a valid image format.\nPlease upload a file in one of the following formats: {formats}",
     "avatar_upload_unpredictable": "Unpredictable error occurred while uploading avatar\nTry again in few seconds or contact the support\nsupport@trial2024.com",
     "message_length": "The message is too long\nLimit is {length} characters",
-    "age": "Min age is 15\nMax age is 35"
+    "invalid_value": "The value you've provided is not valid",
+    "age": "Min age is {min}\nMax age is {max}",
+    "unknown_city": "Try to specify city name clearly"
   },
   "REGISTRATION": {
     "language": "Lets get your personal card done. What languange do you prefer to use ?",
-    "age": "How old are you ?",
+    "age": "How old are you ?\nYou can type age using keyboard",
     "SEX": {
       "message": "Now pick your gender",
       "male": "Male",

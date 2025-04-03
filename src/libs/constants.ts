@@ -20,6 +20,9 @@ export const maxAvatarFileSize = 2097152; // in bytes
 export type RedisClient = RedisClientType;
 export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 
+export const MIN_AGE = 16;
+export const MAX_AGE = 90;
+
 export const options = {
   excludeExtraneousValues: true,
   enableImplicitConversion: true,
@@ -280,7 +283,7 @@ const reportOptions = ({
   i18n,
   lang,
 }: TranslateDto): RegistrationPromptOption => ({
-  message: i18n.t('common.REPORT.name', { lang }),
+  message: i18n.t('common.REPORT.describe', { lang }),
 });
 
 export const createReportPrompts = (

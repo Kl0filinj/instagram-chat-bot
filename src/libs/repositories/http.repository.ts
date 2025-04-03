@@ -38,8 +38,8 @@ export class HttpRepository {
       'Content-Type': 'application/json',
     };
 
-    console.log('url : ', url);
-    console.log('body : ', data);
+    // console.log('url : ', url);
+    // console.log('body : ', data);
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),
@@ -82,8 +82,8 @@ export class HttpRepository {
       'Content-Type': 'application/json',
     };
 
-    console.log('url : ', url);
-    console.log('body : ', currentData);
+    // console.log('url : ', url);
+    // console.log('body : ', currentData);
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, currentData, { headers }),
@@ -114,10 +114,6 @@ export class HttpRepository {
                 title,
                 image_url,
                 subtitle,
-                // default_action: {
-                //   type: 'web_url',
-                //   url: '<THE_WEBSITE_URL>',
-                // },
                 buttons,
               },
             ],
@@ -131,8 +127,8 @@ export class HttpRepository {
       'Content-Type': 'application/json',
     };
 
-    console.log('url : ', url);
-    console.log('body : ', data);
+    // console.log('url : ', url);
+    // console.log('body : ', data);
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),
@@ -144,10 +140,11 @@ export class HttpRepository {
         error.response?.data || error.message,
       );
     }
+    return;
   }
 
   async getIgImageFile(url: string) {
-    console.log('url : ', url);
+    // console.log('url : ', url);
     const response = await firstValueFrom(
       this.httpService.get(url, { responseType: 'arraybuffer' }).pipe(
         retry({
@@ -191,7 +188,7 @@ export class HttpRepository {
     const headers = {
       Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
     };
-    console.log('url : ', url);
+    // console.log('url : ', url);
     const response = await firstValueFrom(
       this.httpService.get(url, { headers }).pipe(
         map((resp) => {
@@ -225,7 +222,7 @@ export class HttpRepository {
     //   'user-agent':
     //     'Mozilla/5.0 (iPhone; CPU iPhone OS 12_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 105.0.0.11.118 (iPhone11,8; iOS 12_3_1; en_US; en-US; scale=2.00; 828x1792; 165586599)',
     // };
-    console.log('url : ', url);
+    // console.log('url : ', url);
 
     const response = await firstValueFrom(
       this.httpService.get(url, { headers }).pipe(

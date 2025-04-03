@@ -57,12 +57,12 @@ export class WebhooksController {
     @Headers('x-hub-signature-256') signature: string,
   ) {
     console.log('####-####-####-####-####-####-####-####');
-    console.log('signature : ', signature);
-    console.log('payload : ', payload);
+    // console.log('signature : ', signature);
+    // console.log('payload : ', payload);
     // if (!this.webhooksService.verifySignature(payload, signature)) {
     //   throw new ForbiddenException('Invalid signature');
     // }
-    console.log('verifySignature PASSED !@@! : ');
+    // console.log('verifySignature PASSED !@@! : ');
 
     return this.webhooksService.handleIncomingWebhook(payload);
   }

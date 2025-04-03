@@ -25,6 +25,8 @@ import {
   HandleBackStepDto,
   userInfoMethodsChain,
   quickReplyButtons,
+  MIN_AGE,
+  MAX_AGE,
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
@@ -38,9 +40,7 @@ import { TelegramService } from 'src/telegram/telegram.service';
 // TODO: PROJECT DOCUMENTATION
 // TODO: ADD COUNTRY LIST warning while registration !!!!!!!!
 
-// TODO: ADD OPTIONS FOR RESUBMIT: All; Avatar; Description; Age; Language; Location - ✅
-// TODO: ADD 'Back' Button to Registration flow - ✅
-// TODO: CHANGE SCROLLED USER BUTTONS APPEARANCE - ✅
+// TODO: Change db passwords
 
 @Injectable()
 export class WebhooksService {
@@ -83,6 +83,7 @@ export class WebhooksService {
       image_url: avatarUrl,
       buttons: templateButtons({ i18n: this.i18nService, ...languageT }).hub,
     });
+    return;
   }
 
   async handleContinueRegistration(igId: string) {
@@ -191,7 +192,7 @@ export class WebhooksService {
   async handleReply(dto: HandleReplyDto) {
     const { senderId, payload } = dto;
     const generalFlow = payload.split(':')[0];
-    console.log('payload (FLOW) : ', payload);
+    // console.log('payload (FLOW) : ', payload);
 
     switch (generalFlow) {
       case 'resubmit':
@@ -209,10 +210,13 @@ export class WebhooksService {
         return;
       case 'report':
         await this.reportFlow(payload, senderId);
+        return;
       case 'start_cmd':
         await this.handleStartMessage(senderId);
+        return;
       case 'continue_cmd':
         await this.handleContinueRegistration(senderId);
+        return;
       case 'hub_cmd':
         await this.handleMenu(senderId);
         return;
@@ -234,9 +238,9 @@ export class WebhooksService {
     const flowOrigin = flow.split(':')[0];
     const isCall = flow.includes('::call') || false;
 
-    console.log('userInfoFlow : ', userInfoFlow);
-    console.log('userInfoValue : ', userInfoValue);
-    console.log('flowOrigin : ', flowOrigin);
+    // console.log('userInfoFlow : ', userInfoFlow);
+    // console.log('userInfoValue : ', userInfoValue);
+    // console.log('flowOrigin : ', flowOrigin);
 
     if (!isUserInfoFlowType(flowOrigin)) {
       await this.unpredictableError(igId, 'User flow type error');
@@ -293,7 +297,7 @@ export class WebhooksService {
         return;
       case 'resubmit:name':
       case 'registration:name':
-        await this.nameStep(igId, userInfoValue, lang);
+        await this.nameStep(igId, userInfoValue, flowOrigin, lang);
         return;
       default:
         await this.wrongReply(igId);
@@ -417,16 +421,29 @@ export class WebhooksService {
 
     const trimmedAge = +age.trim();
 
-    if (isNaN(trimmedAge) || trimmedAge < 15 || trimmedAge > 35) {
+    const isNotANumber = isNaN(trimmedAge);
+    const isTooLong = trimmedAge < MIN_AGE || trimmedAge > MAX_AGE;
+    if (isNotANumber || isTooLong) {
+      let errorMessage = 'age';
+      if (isNotANumber) {
+        errorMessage = 'invalid_value';
+      }
       const lang = await this.defineUserLocalization(igId);
       await this.httpRepository.sendMessage(
         igId,
-        this.i18nService.t('common.ERRORS.message_length', {
+        this.i18nService.t(`common.ERRORS.${errorMessage}`, {
           lang,
-          args: { length: 100 },
+          args: { min: MIN_AGE, max: MAX_AGE },
         }),
         'text',
       );
+      await this.callUserInfoStep({
+        igId,
+        flow,
+        lang,
+        calledStep: 'age',
+        saveLastStep: false,
+      });
       return;
     }
 
@@ -553,6 +570,13 @@ export class WebhooksService {
         }),
         'text',
       );
+      await this.callUserInfoStep({
+        igId,
+        flow,
+        lang,
+        calledStep: 'bio',
+        saveLastStep: false,
+      });
       return;
     }
 
@@ -615,6 +639,13 @@ export class WebhooksService {
           }),
         'text',
       );
+      await this.callUserInfoStep({
+        igId,
+        flow,
+        lang,
+        calledStep: 'avatar',
+        saveLastStep: false,
+      });
       return;
     }
 
@@ -681,9 +712,13 @@ export class WebhooksService {
       );
       await this.httpRepository.sendMessage(
         igId,
-        `${this.i18nService.t('common.REGISTRATION.location_available', {
-          lang: localizationLang,
-        })}: ${formattedCities}`,
+        formattedCities.length
+          ? `${this.i18nService.t('common.REGISTRATION.location_available', {
+              lang: localizationLang,
+            })}: ${formattedCities}`
+          : this.i18nService.t('common.ERRORS.unknown_city', {
+              lang: localizationLang,
+            }),
         'text',
       );
       return;
@@ -719,7 +754,12 @@ export class WebhooksService {
     return;
   }
 
-  private async nameStep(igId: string, name: string, lang: string) {
+  private async nameStep(
+    igId: string,
+    name: string,
+    flow: UserInfoFlowType,
+    lang: string,
+  ) {
     if (name === '[back]') {
       await this.handleBackStep({ currentStep: 'name', igId, lang });
       return;
@@ -737,6 +777,13 @@ export class WebhooksService {
         }),
         'text',
       );
+      await this.callUserInfoStep({
+        igId,
+        flow,
+        lang,
+        calledStep: 'name',
+        saveLastStep: false,
+      });
       return;
     }
 
@@ -777,10 +824,22 @@ export class WebhooksService {
   }
 
   private async callUserInfoStep(dto: CallUserInfoStepDto) {
-    const { flow, igId, calledStep, lang, isCall = false } = dto;
+    const {
+      flow,
+      igId,
+      calledStep,
+      lang,
+      isCall = false,
+      saveLastStep = true,
+    } = dto;
 
     const currentStepCmd = `${flow}:${calledStep}`;
-    await this.setLastStep(igId, `${currentStepCmd}${isCall ? '::call' : ''}`);
+    if (saveLastStep) {
+      await this.setLastStep(
+        igId,
+        `${currentStepCmd}${isCall ? '::call' : ''}`,
+      );
+    }
     const currentUserInfoPrompt = createUserInfoPrompts({
       flow,
       i18n: this.i18nService,
@@ -1005,19 +1064,17 @@ export class WebhooksService {
         }),
         'text',
       );
+
+      await createReportPrompts({ i18n: this.i18nService, lang })[
+        'report:send'
+      ](this.httpRepository, igId);
       return;
     }
 
-    const ourUser = await this.prisma.user.update({
-      where: {
-        id: igId,
-      },
-      data: {
-        lastCmd: null,
-      },
-    });
-
-    const report = await tryCatchWrapper<ReportEntity>(
+    const { report, ourUser } = await tryCatchWrapper<{
+      report: ReportEntity;
+      ourUser: UserEntity;
+    }>(
       this.prisma.$transaction(async (tx) => {
         const findReport = await tx.reports.findFirst({
           where: {
@@ -1040,7 +1097,7 @@ export class WebhooksService {
           },
         });
 
-        await tx.user.update({
+        const ourUser = await tx.user.update({
           where: {
             id: igId,
           },
@@ -1048,10 +1105,11 @@ export class WebhooksService {
             rejectedUsers: {
               push: updReport.reportedUserId,
             },
+            lastCmd: null,
           },
         });
 
-        return updReport;
+        return { report: updReport, ourUser };
       }),
       {
         igId,
@@ -1060,14 +1118,14 @@ export class WebhooksService {
     );
 
     //* Send reportText to tg
-    const telegramRes = await this.telegramService.sendMessage(
+    await this.telegramService.sendMessage(
       process.env.TG_CHAT_ID,
       `REPORT FROM USER\n\nFROM:\nName: ${ourUser.name}\nId: ${ourUser.id}\n\nTO:\nId: ${report.reportedUserId}\n\nMessage :"${reportText}"`,
       {
         message_thread_id: 2,
       },
     );
-    console.log('telegramRes : ', telegramRes);
+    // console.log('telegramRes : ', telegramRes);
 
     await this.httpRepository.sendMessage(
       igId,
@@ -1526,7 +1584,7 @@ export class WebhooksService {
 
     if (targetUser && targetUser.lastCmd) {
       const flowOrigin = targetUser.lastCmd.split(':')[0];
-      console.log('@---@ flowOrigin @---@ : ', flowOrigin);
+      // console.log('@---@ flowOrigin @---@ : ', flowOrigin);
 
       if (isUserInfoFlowType(flowOrigin)) {
         const currentUserInfoPrompt = createUserInfoPrompts({
@@ -1707,18 +1765,18 @@ export class WebhooksService {
     }
 
     const eventType = !!message ? 'message' : !!postback ? 'postback' : null;
-    console.log('@@eventType@@ : ', eventType);
+    // console.log('@@eventType@@ : ', eventType);
     if (!eventType) {
       return;
     }
 
     switch (eventType) {
       case 'message':
-        console.log('@@MESSAGE@@ : ', message);
+        // console.log('@@MESSAGE@@ : ', message);
         await this.handleMessageEvent(senderId, message);
         break;
       case 'postback':
-        console.log('@@POSTBACK@@ : ', postback);
+        // console.log('@@POSTBACK@@ : ', postback);
         await this.handlePostbackEvent(senderId, postback);
         break;
     }

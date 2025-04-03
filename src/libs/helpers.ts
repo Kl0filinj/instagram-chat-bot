@@ -103,7 +103,7 @@ export const avatarFileValidationPipe = async ({
   //* 1 - Check file size
   //* 2 - Check file extension
   //* 3 - Try to compress file
-  console.log('FILE ORIG SIZE: ', file.size);
+  // console.log('FILE ORIG SIZE: ', file.size);
 
   if (file.size >= maxAvatarFileSize) {
     throw Error(
@@ -142,14 +142,14 @@ const compressImage = async (file: Express.Multer.File) => {
     progressive: true,
   };
   const sizeBeforeCompression = file.buffer.length;
-  console.log('sizeBeforeCompression : ', sizeBeforeCompression);
+  // console.log('sizeBeforeCompression : ', sizeBeforeCompression);
 
   try {
     const compressedBuffer = await sharp(file.buffer)
       .toFormat(imageExtension as keyof sharp.FormatEnum, compressionOptions)
       .toBuffer();
     const sizeAfterCompression = compressedBuffer.length;
-    console.log('sizeAfterCompression : ', sizeAfterCompression);
+    // console.log('sizeAfterCompression : ', sizeAfterCompression);
 
     return sizeAfterCompression < sizeBeforeCompression
       ? { ...file, buffer: compressedBuffer, size: compressedBuffer.length }

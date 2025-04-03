@@ -14,11 +14,13 @@
     "wrong_avatar_file_extension": "Die hochgeladene Datei ist kein gültiges Bildformat.\nBitte laden Sie eine Datei in einem der folgenden Formate hoch: {formats}",
     "avatar_upload_unpredictable": "Unvorhersehbarer Fehler beim Hochladen des Avatars\nVersuchen Sie es in wenigen Sekunden erneut oder wenden Sie sich an den Support\nsupport@trial2024.com",
     "message_length": "Die Nachricht ist zu lang\nLimit ist {length} Zeichen",
-    "age": "Mindestalter: 15 Jahre\nHöchstalter: 35 Jahre"
+    "invalid_value": "Der von Ihnen angegebene Wert ist nicht gültig",
+    "age": "Mindestalter: {min} Jahre\nHöchstalter: {max} Jahre",
+    "unknown_city": "Versuchen Sie, den Namen der Stadt deutlich anzugeben"
   },
   "REGISTRATION": {
     "language": "Lassen Sie uns Ihre persönliche Karte erstellen. Welche Sprache möchten Sie verwenden ?",
-    "age": "Wie alt sind Sie ?",
+    "age": "Wie alt sind Sie ? (Sie können Alter über die Tastatur eingeben)",
     "SEX": {
       "message": "Wählen Sie jetzt Ihr Geschlecht",
       "male": "Mann",
