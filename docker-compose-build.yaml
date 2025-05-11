@@ -36,7 +36,7 @@ services:
     #   - "4040:4040"
     environment:
       - NGROK_AUTHTOKEN=${NGROK_AUTH_TOKEN}
-    command: http --domain=pug-simple-tadpole.ngrok-free.app app:3000
+    command: http --host-header=rewrite --domain=pug-simple-tadpole.ngrok-free.app app:3000
     depends_on:
       - app
     networks:
@@ -49,9 +49,9 @@ services:
     env_file:
       - .env
     environment:
-      - NODE_ENV=production
-    # ports:
-    #   - '3000:3000'
+      - NODE_ENV=prod
+    ports:
+      - '3000:3000'
     depends_on:
       - database
       - redis

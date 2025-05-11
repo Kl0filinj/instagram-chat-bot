@@ -6,7 +6,26 @@ import { ConfigService } from '@nestjs/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  // app.enableCors(getCorsSettings(process.env.CORS_ALLOW || '')); // TODO: Enable cors later after tests
+
+  app.enableCors({
+    origin: [
+      'http://localhost:3000',
+      'https://pug-simple-tadpole.ngrok-free.app',
+      'https://instagram-chat-bot-admin-panel.vercel.app',
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+      'ngrok-skip-browser-warning',
+    ],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    credentials: true,
+    maxAge: 3600,
+  });
 
   const env = configService.get('NODE_ENV');
   const port = configService.get(env === 'dev' ? 'APP_PORT_LOCAL' : 'APP_PORT');
