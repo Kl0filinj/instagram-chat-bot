@@ -308,4 +308,16 @@ export class AdminService {
     };
     return mimeTypes[ext] || 'application/octet-stream';
   }
+
+  async clearAllBots() {
+    await this.prisma.user.deleteMany({
+      where: {
+        id: {
+          not: {
+            contains: '-',
+          },
+        },
+      },
+    });
+  }
 }

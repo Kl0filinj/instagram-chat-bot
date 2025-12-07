@@ -72,4 +72,10 @@ export class AdminController {
   deleteUser(@Param('userId') userId: string) {
     return this.adminService.deleteUser(userId);
   }
+
+  @Delete('users/dev/all-bots')
+  @UseGuards(AtGuard)
+  clearAllBots() {
+    return this.adminService.clearAllBots();
+  }
 }
