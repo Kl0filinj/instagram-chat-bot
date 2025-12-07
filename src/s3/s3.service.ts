@@ -45,7 +45,7 @@ export class S3Service {
         'Content-Disposition': `inline`,
       },
     };
-    console.log('input : ', input);
+    // console.log('input : ', input);
 
     try {
       const response: PutObjectCommandOutput = await this.s3.send(

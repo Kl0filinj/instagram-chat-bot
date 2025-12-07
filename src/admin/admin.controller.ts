@@ -6,9 +6,11 @@ import {
   Param,
   Patch,
   Post,
-  Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AdminService } from './admin.service';
 import {
   AtGuard,
@@ -24,7 +26,7 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
+  async login(@Body() dto: LoginDto) {
     return this.adminService.login(dto);
   }
 
@@ -50,6 +52,13 @@ export class AdminController {
   @UseGuards(AtGuard)
   createUsers(@Body() dto: CreateNewUserDto) {
     return this.adminService.createNewUser(dto);
+  }
+
+  @Post('users/bulk')
+  @UseGuards(AtGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  createUsersBulk(@UploadedFile() file: Express.Multer.File) {
+    return this.adminService.createNewUsersBulk(file);
   }
 
   @Patch('users/:userId')
