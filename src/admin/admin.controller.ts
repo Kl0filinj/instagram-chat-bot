@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -75,7 +76,7 @@ export class AdminController {
 
   @Delete('users/dev/all-bots')
   @UseGuards(AtGuard)
-  clearAllBots() {
-    return this.adminService.clearAllBots();
+  clearAllBots(@Query('force') force: boolean) {
+    return this.adminService.clearAllBots(force);
   }
 }

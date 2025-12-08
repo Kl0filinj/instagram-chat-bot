@@ -1464,7 +1464,10 @@ export class WebhooksService {
               ...targetUser.rejectedUsers,
             ],
           },
-          city,
+          city: {
+            equals: city,
+            mode: 'insensitive',
+          },
           age: {
             lte: currentAgeOption.maxAgeLimit,
             gte: currentAgeOption.minAgeLimit,

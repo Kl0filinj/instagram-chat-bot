@@ -41,10 +41,8 @@ export class S3Service {
       Bucket: this.bucket,
       Key: key,
       Body: file.buffer,
-      Metadata: {
-        'Content-Type': file.mimetype,
-        'Content-Disposition': `inline`,
-      },
+      ContentType: file.mimetype,
+      ContentDisposition: 'inline',
     };
     // console.log('input : ', input);
 
@@ -52,7 +50,6 @@ export class S3Service {
       const response: PutObjectCommandOutput = await this.s3.send(
         new PutObjectCommand(input),
       );
-      // console.log('S3 RESPONSE : ', response);
       if (response.$metadata.httpStatusCode === 200) {
         return key;
       }

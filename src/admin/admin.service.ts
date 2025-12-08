@@ -10,6 +10,7 @@ import {
   getPage,
   PaginationQuery,
   UserSexEnum,
+  compressImage,
 } from '@libs';
 import {
   BadRequestException,
@@ -185,6 +186,8 @@ export class AdminService {
       const imageEntries = zipEntries.filter(
         (entry) =>
           !entry.isDirectory &&
+          !entry.entryName.startsWith('._') &&
+          !entry.entryName.includes('__MACOSX') &&
           (entry.entryName.toLowerCase().includes('/images/') ||
             entry.entryName.toLowerCase().includes('/avatars/')) &&
           /\.(jpg|jpeg|png|gif|webp)$/i.test(entry.entryName),
@@ -215,16 +218,18 @@ export class AdminService {
               buffer: imageBuffer,
               originalname: fileName,
               mimetype: mimeType,
-              fieldname: 'avatar',
+              fieldname: 'file',
               encoding: '7bit',
               size: imageBuffer.length,
-              stream: null,
+              stream: Readable.from(imageBuffer),
               destination: '',
-              filename: fileName,
+              filename: '',
               path: '',
             };
 
-            const fileRecord = await this.filesService.uploadFile(multerFile);
+            const compressedAvatarFile = await compressImage(multerFile);
+            const fileRecord =
+              await this.filesService.uploadFile(compressedAvatarFile);
             avatarFileId = fileRecord.id;
           }
 
@@ -322,14 +327,14 @@ export class AdminService {
     return mimeTypes[ext] || 'application/octet-stream';
   }
 
-  async clearAllBots() {
+  async clearAllBots(force: boolean) {
     const allUsers = await this.prisma.user.findMany({
       select: { id: true },
     });
 
     const botIds = allUsers
       .filter((user) => {
-        return user.id.length === 36 && user.id.includes('-');
+        return force ? true : user.id.length === 36 && user.id.includes('-');
       })
       .map((user) => user.id);
 

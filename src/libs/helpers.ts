@@ -128,7 +128,7 @@ export const avatarFileValidationPipe = async ({
   return compressedAvatar;
 };
 
-const compressImage = async (file: Express.Multer.File) => {
+export const compressImage = async (file: Express.Multer.File) => {
   if (!file.buffer || !Buffer.isBuffer(file.buffer)) {
     return file;
   }
