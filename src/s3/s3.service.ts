@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   PutObjectCommandInput,
@@ -62,7 +63,7 @@ export class S3Service {
     }
   }
 
-  async getFileUrl(key: string) {
+  async getFileUrl(key: string, expiresIn: number = 3600) {
     if (key.includes('http')) {
       return key;
     }
@@ -70,6 +71,43 @@ export class S3Service {
       Bucket: this.bucket,
       Key: key,
     });
-    return await getSignedUrl(this.s3, command); //* Maybe return the expiration { expiresIn: 3600 }
+    return await getSignedUrl(this.s3, command, { expiresIn });
+  }
+
+  /**
+   * Get a signed URL for a file that expires in 24 hours (86400 seconds)
+   * This is used for files that will be cached in Redis
+   */
+  async getSignedUrlForCache(key: string): Promise<string> {
+    return this.getFileUrl(key, 86400); // 24 hours
+  }
+
+  /**
+   * Delete a file from S3 by its key
+   * @param key - The S3 object key to delete
+   */
+  async deleteFile(key: string): Promise<void> {
+    if (!key || key.includes('http')) {
+      console.warn('Invalid S3 key provided for deletion:', key);
+      return;
+    }
+
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      });
+
+      const response = await this.s3.send(command);
+      console.log('S3 file deleted successfully:', key, response.$metadata);
+    } catch (error) {
+      console.error(
+        'Error deleting file from S3:',
+        error.message ?? error,
+        'Key:',
+        key,
+      );
+      throw new Error(`Failed to delete file from S3: ${key}`);
+    }
   }
 }

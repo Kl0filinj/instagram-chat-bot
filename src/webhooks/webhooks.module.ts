@@ -7,7 +7,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import { HelpersService } from './helpers/helpers.service';
 import * as path from 'path';
-import { S3Service } from 'src/s3/s3.service';
+import { FilesModule } from 'src/files/files.module';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { APP_FILTER } from '@nestjs/core';
 import { WebhookExceptionFilter } from 'src/libs/filters/webhooks-exception.filter';
@@ -25,10 +25,10 @@ import { WebhookExceptionFilter } from 'src/libs/filters/webhooks-exception.filt
       resolvers: [AcceptLanguageResolver],
     }),
     RedisModule.forRoot(process.env.REDIS_URL),
+    FilesModule,
   ],
   controllers: [WebhooksController],
   providers: [
-    S3Service,
     WebhooksService,
     HttpRepository,
     RedisRepository,

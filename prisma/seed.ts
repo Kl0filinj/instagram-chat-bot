@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { cities } from './data';
 import { faker } from '@faker-js/faker';
-import { createId } from '@paralleldrive/cuid2';
+import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -67,14 +67,14 @@ const seedUsers = async () => {
       ]);
 
       return {
-        id: createId(),
+        id: randomUUID(),
         name: `${faker.person.firstName()} ${faker.person.lastName()}`,
         age: faker.number.int({ min: 18, max: 23 }),
         sex,
         sexInterest,
         city: city,
         bio: faker.lorem.sentence({ max: 10, min: 5 }),
-        avatarUrl: faker.image.avatar(),
+        avatarUrl: faker.image.avatar(), // or null
         isRegistered: true,
         localizationLang: 'en',
       };

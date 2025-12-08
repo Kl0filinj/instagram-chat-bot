@@ -18,10 +18,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createId } from '@paralleldrive/cuid2';
+import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { S3Service } from 'src/s3/s3.service';
+import { FilesService } from 'src/files/files.service';
 import * as AdmZip from 'adm-zip';
 import * as csv from 'csv-parser';
 import { Readable } from 'stream';
@@ -34,7 +34,7 @@ export class AdminService {
   constructor(
     private readonly jwtService: JwtService,
     private prisma: PrismaService,
-    private s3Service: S3Service,
+    private filesService: FilesService,
   ) {
     this.adminUsername = process.env.ADMIN_USERNAME;
     this.adminPassword = process.env.ADMIN_PASSWORD;
@@ -106,18 +106,31 @@ export class AdminService {
       where: {
         id: userId,
       },
+      include: {
+        avatarFile: true,
+      },
     });
 
     // TODO: Do smth if user not found
 
-    return plainToInstance(UserDetailsResponseDto, getUserById, options);
+    let avatarUrl: string | null = null;
+    if (getUserById?.avatarFileId) {
+      avatarUrl = await this.filesService.getFileUrl(getUserById.avatarFileId);
+    }
+
+    const userWithAvatar = {
+      ...getUserById,
+      avatarUrl,
+    };
+
+    return plainToInstance(UserDetailsResponseDto, userWithAvatar, options);
   }
 
   async createNewUser(dto: CreateNewUserDto) {
     try {
       await this.prisma.user.create({
         data: {
-          id: createId(),
+          id: randomUUID(),
           ...dto,
         },
       });
@@ -187,7 +200,7 @@ export class AdminService {
         const userData = users[i];
 
         try {
-          let avatarUrl: string | null = null;
+          let avatarFileId: string | null = null;
 
           const imageEntry =
             imageEntries[i] ||
@@ -211,8 +224,8 @@ export class AdminService {
               path: '',
             };
 
-            const s3Key = await this.s3Service.uploadFile(multerFile);
-            avatarUrl = await this.s3Service.getFileUrl(s3Key);
+            const fileRecord = await this.filesService.uploadFile(multerFile);
+            avatarFileId = fileRecord.id;
           }
 
           const sexInterest = userData.sex
@@ -222,14 +235,14 @@ export class AdminService {
             : UserSexEnum.none;
           const newUser = await this.prisma.user.create({
             data: {
-              id: createId(),
+              id: randomUUID(),
               name: userData.name || null,
               age: userData.age || 18,
               sex: userData.sex || null,
               sexInterest,
               city: userData.city || null,
               bio: userData.bio || null,
-              avatarUrl: avatarUrl,
+              avatarFileId: avatarFileId,
               isBlocked: false,
               isActive: true,
               isRegistered: true,
@@ -310,14 +323,24 @@ export class AdminService {
   }
 
   async clearAllBots() {
-    await this.prisma.user.deleteMany({
-      where: {
-        id: {
-          not: {
-            contains: '-',
+    const allUsers = await this.prisma.user.findMany({
+      select: { id: true },
+    });
+
+    const botIds = allUsers
+      .filter((user) => {
+        return user.id.length === 36 && user.id.includes('-');
+      })
+      .map((user) => user.id);
+
+    if (botIds.length > 0) {
+      await this.prisma.user.deleteMany({
+        where: {
+          id: {
+            in: botIds,
           },
         },
-      },
-    });
+      });
+    }
   }
 }

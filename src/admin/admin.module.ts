@@ -3,7 +3,7 @@ import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { AtStrategy } from '@libs';
-import { S3Module } from 'src/s3/s3.module';
+import { FilesModule } from 'src/files/files.module';
 
 @Module({
   controllers: [AdminController],
@@ -15,7 +15,7 @@ import { S3Module } from 'src/s3/s3.module';
         expiresIn: '1d',
       },
     }),
-    S3Module,
+    FilesModule,
   ],
 })
 export class AdminModule {}

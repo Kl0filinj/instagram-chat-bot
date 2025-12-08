@@ -22,7 +22,8 @@ model User {
   city             String?
   name             String?
   bio              String?
-  avatarUrl        String?
+  avatarFileId     String?
+  avatarFile       File?     @relation(fields: [avatarFileId], references: [id], onDelete: SetNull)
   rejectedUsers    String[]
   likedUsers       String[]
   isBlocked        Boolean   @default(false)
@@ -65,4 +66,15 @@ model City {
   admin2  String?
 
   @@index([country])
+}
+
+model File {
+  id        String   @id @default(uuid())
+  s3Key     String   @unique
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+  users     User[]
+
+  @@index([s3Key])
 }

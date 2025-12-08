@@ -157,7 +157,8 @@ export class UserDetailsResponseDto extends AllUsersResponseDto {
 
 export class CreateNewUserDto extends OmitType(UserEntity, [
   'id',
-  'avatarUrl',
+  'avatarFileId',
+  'avatarFile',
   'rejectedUsers',
   'likedUsers',
   'createdAt',

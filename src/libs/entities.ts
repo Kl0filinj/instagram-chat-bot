@@ -8,7 +8,8 @@ export class UserEntity {
   city: string | null;
   name: string | null;
   bio: string | null;
-  avatarUrl: string | null;
+  avatarFileId: string | null;
+  avatarFile?: FileEntity | null;
   rejectedUsers: string[];
   likedUsers: string[];
   isBlocked: boolean;
@@ -18,6 +19,14 @@ export class UserEntity {
   lastCmd: string | null;
   localizationLang: string;
   repotrs?: any[];
+}
+
+export class FileEntity {
+  id: string;
+  s3Key: string;
+  mimeType: string;
+  size: number;
+  createdAt: Date;
 }
 
 export class ReportEntity {

@@ -30,7 +30,7 @@ import {
 } from '@libs';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { I18nService } from 'nestjs-i18n';
-import { S3Service } from 'src/s3/s3.service';
+import { FilesService } from 'src/files/files.service';
 import * as crypto from 'crypto';
 import { TelegramService } from 'src/telegram/telegram.service';
 // import * as citiesData from 'cities.json';
@@ -52,7 +52,7 @@ export class WebhooksService {
     private readonly httpRepository: HttpRepository,
     private readonly i18nService: I18nService,
     private readonly redisRepo: RedisRepository,
-    private readonly s3Service: S3Service,
+    private readonly filesService: FilesService,
     private readonly telegramService: TelegramService,
   ) {
     // this.initializeCityCache();
@@ -64,8 +64,10 @@ export class WebhooksService {
         id: igId,
       },
     });
-    const avatarUrl = await this.s3Service.getFileUrl(targetUser.avatarUrl);
-    // console.log('avatarUrl : ', avatarUrl);
+    const avatarUrl = await this.filesService.getFileUrl(
+      targetUser.avatarFileId,
+    );
+    console.log('@@ HANDLE MENU avatarUrl : ', avatarUrl);
 
     // TODO: Find all places like this and make a reusable fnc for it
     const languageT = { lang: targetUser.localizationLang };
@@ -649,11 +651,11 @@ export class WebhooksService {
       return;
     }
 
-    const avatarKey = await tryCatchWrapper<string>(
-      this.s3Service.uploadFile(validatedAvatarFile),
+    const fileRecord = await tryCatchWrapper<{ id: string; s3Key: string }>(
+      this.filesService.uploadFile(validatedAvatarFile),
       {
         igId,
-        errorName: 'avatarStep S3 uploadFile',
+        errorName: 'avatarStep filesService uploadFile',
       },
     );
     // console.log('validatedAvatarFile : ', validatedAvatarFile);
@@ -664,7 +666,7 @@ export class WebhooksService {
           id: igId,
         },
         data: {
-          avatarUrl: avatarKey,
+          avatarFileId: fileRecord.id,
         },
       }),
       {
@@ -804,7 +806,7 @@ export class WebhooksService {
       },
     );
 
-    const avatarUrl = await this.s3Service.getFileUrl(user.avatarUrl);
+    const avatarUrl = await this.filesService.getFileUrl(user.avatarFileId);
     const languageT = { lang: user.localizationLang };
     const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
     const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);
@@ -1188,10 +1190,12 @@ export class WebhooksService {
       await this.httpRepository.getProfileInfo(ourUser.id);
     const { username: targetUserNickname } =
       await this.httpRepository.getProfileInfo(targetUser.id);
-    const targetAvatarUrl = await this.s3Service.getFileUrl(
-      targetUser.avatarUrl,
+    const targetAvatarUrl = await this.filesService.getFileUrl(
+      targetUser.avatarFileId,
     );
-    const ourAvatarUrl = await this.s3Service.getFileUrl(ourUser.avatarUrl);
+    const ourAvatarUrl = await this.filesService.getFileUrl(
+      ourUser.avatarFileId,
+    );
 
     await this.httpRepository.sendTemplate(ourUser.id, {
       title: this.i18nService.t('common.MATCH.target_user_match', {
@@ -1351,7 +1355,9 @@ export class WebhooksService {
     });
 
     if (!targetUser.rejectedUsers.includes(ourUser.id)) {
-      const avatarUrl = await this.s3Service.getFileUrl(ourUser.avatarUrl);
+      const avatarUrl = await this.filesService.getFileUrl(
+        ourUser.avatarFileId,
+      );
       const languageT = { lang: targetUser.localizationLang };
       const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
       const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);
@@ -1551,7 +1557,7 @@ export class WebhooksService {
     }
 
     // TODO: FIND ALL SIMILAR PLACES AND MAKE 1 REUSABLE FNC FOR IT
-    const avatarUrl = await this.s3Service.getFileUrl(nextUser.avatarUrl);
+    const avatarUrl = await this.filesService.getFileUrl(nextUser.avatarFileId);
     const nameT = this.i18nService.t('common.CARD_INFO.name', languageT);
     const ageT = this.i18nService.t('common.CARD_INFO.age', languageT);
     const locationT = this.i18nService.t(
@@ -1560,6 +1566,7 @@ export class WebhooksService {
     );
     const aboutT = this.i18nService.t('common.CARD_INFO.about', languageT);
 
+    console.log('@@ SCROLL NEXT USER avatarUrl: ', avatarUrl);
     await this.httpRepository.sendTemplate(targetUser.id, {
       title: `${nameT}: ${nextUser.name}`,
       subtitle: `${ageT}: ${nextUser.age}\n${locationT}: ${nextUser.city}\n${aboutT}: ${nextUser.bio}`,

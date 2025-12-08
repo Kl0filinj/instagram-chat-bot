@@ -21,6 +21,22 @@ services:
     ports:
       - 6380:6379
 
+  # pgadmin: # FOR FUTURE
+  #   image: dpage/pgadmin4:latest
+  #   container_name: 'ichat_bot_pgadmin'
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+  #     PGADMIN_LISTEN_PORT: 80
+  #   ports:
+  #     - '5050:80'
+  #   volumes:
+  #     - pgadmin:/var/lib/pgadmin
+  #   depends_on:
+  #     - main_db
+
 volumes:
   main_db:
   redis:
+  # pgadmin:
