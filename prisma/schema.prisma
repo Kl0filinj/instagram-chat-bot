@@ -32,6 +32,7 @@ model User {
   isRegistered     Boolean   @default(false)
   lastCmd          String?
   localizationLang String    @default("en")
+  isBot            Boolean   @default(false)
   reports          Reports[] @relation("ReportCreator")
   reportedTarget   Reports[] @relation("ReportedUser")
 

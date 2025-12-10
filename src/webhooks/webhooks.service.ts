@@ -366,6 +366,8 @@ export class WebhooksService {
     const isResubmit = flow === 'resubmit';
     const isRegistration = flow === 'registration';
     try {
+      // TODO: Maybe use transaction
+      // TODO: Race scenario maybe exists (need to test)
       if (isRegistration && !user) {
         user = await this.prisma.user.create({
           data: {

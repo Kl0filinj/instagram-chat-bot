@@ -19,13 +19,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { randomUUID } from 'crypto';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FilesService } from 'src/files/files.service';
 import * as AdmZip from 'adm-zip';
 import * as csv from 'csv-parser';
 import { Readable } from 'stream';
+import { createId } from '@paralleldrive/cuid2';
 
 @Injectable()
 export class AdminService {
@@ -131,7 +131,8 @@ export class AdminService {
     try {
       await this.prisma.user.create({
         data: {
-          id: randomUUID(),
+          id: createId(),
+          isBot: true,
           ...dto,
         },
       });
@@ -240,7 +241,7 @@ export class AdminService {
             : UserSexEnum.none;
           const newUser = await this.prisma.user.create({
             data: {
-              id: randomUUID(),
+              id: createId(),
               name: userData.name || null,
               age: userData.age || 18,
               sex: userData.sex || null,
@@ -255,6 +256,7 @@ export class AdminService {
               rejectedUsers: [],
               likedUsers: [],
               lastCmd: null,
+              isBot: true,
             },
           });
 
@@ -329,12 +331,12 @@ export class AdminService {
 
   async clearAllBots(force: boolean) {
     const allUsers = await this.prisma.user.findMany({
-      select: { id: true },
+      select: { id: true, isBot: true },
     });
 
     const botIds = allUsers
       .filter((user) => {
-        return force ? true : user.id.length === 36 && user.id.includes('-');
+        return force ? true : user.isBot;
       })
       .map((user) => user.id);
 
