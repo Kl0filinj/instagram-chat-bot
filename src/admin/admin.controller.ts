@@ -76,7 +76,7 @@ export class AdminController {
 
   @Delete('users/dev/all-bots')
   @UseGuards(AtGuard)
-  clearAllBots(@Query('force') force: boolean) {
-    return this.adminService.clearAllBots(force);
+  clearAllBots(@Query('force') force: boolean, @Query('city') city: string) {
+    return this.adminService.clearAllBots(force, city);
   }
 }

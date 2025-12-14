@@ -189,10 +189,11 @@ export class AdminService {
           !entry.isDirectory &&
           !entry.entryName.startsWith('._') &&
           !entry.entryName.includes('__MACOSX') &&
-          (entry.entryName.toLowerCase().includes('/images/') ||
-            entry.entryName.toLowerCase().includes('/avatars/')) &&
+          (entry.entryName.toLowerCase().includes('images/') ||
+            entry.entryName.toLowerCase().includes('avatars/')) &&
           /\.(jpg|jpeg|png|gif|webp)$/i.test(entry.entryName),
       );
+      console.log('@@ imageEntries.length : ', imageEntries.length);
 
       const csvData = csvEntry.getData().toString('utf8');
       const users = await this.parseCSV(csvData);
@@ -210,29 +211,35 @@ export class AdminService {
             imageEntries[i] ||
             imageEntries[Math.floor(Math.random() * imageEntries.length)];
 
-          if (imageEntry) {
-            const imageBuffer = imageEntry.getData();
-            const fileName = imageEntry.name;
-            const mimeType = this.getMimeType(fileName);
-
-            const multerFile: Express.Multer.File = {
-              buffer: imageBuffer,
-              originalname: fileName,
-              mimetype: mimeType,
-              fieldname: 'file',
-              encoding: '7bit',
-              size: imageBuffer.length,
-              stream: Readable.from(imageBuffer),
-              destination: '',
-              filename: '',
-              path: '',
-            };
-
-            const compressedAvatarFile = await compressImage(multerFile);
-            const fileRecord =
-              await this.filesService.uploadFile(compressedAvatarFile);
-            avatarFileId = fileRecord.id;
+          if (!imageEntry) {
+            errors.push({
+              user: userData.name || 'Unknown',
+              error: 'No image found',
+            });
+            continue;
           }
+
+          const imageBuffer = imageEntry.getData();
+          const fileName = imageEntry.name;
+          const mimeType = this.getMimeType(fileName);
+
+          const multerFile: Express.Multer.File = {
+            buffer: imageBuffer,
+            originalname: fileName,
+            mimetype: mimeType,
+            fieldname: 'file',
+            encoding: '7bit',
+            size: imageBuffer.length,
+            stream: Readable.from(imageBuffer),
+            destination: '',
+            filename: '',
+            path: '',
+          };
+
+          const compressedAvatarFile = await compressImage(multerFile);
+          const fileRecord =
+            await this.filesService.uploadFile(compressedAvatarFile);
+          avatarFileId = fileRecord.id;
 
           const sexInterest = userData.sex
             ? userData.sex?.toLowerCase() === 'male'
@@ -329,9 +336,12 @@ export class AdminService {
     return mimeTypes[ext] || 'application/octet-stream';
   }
 
-  async clearAllBots(force: boolean) {
+  async clearAllBots(force: boolean, city: string) {
     const allUsers = await this.prisma.user.findMany({
-      select: { id: true, isBot: true },
+      where: {
+        city: city || undefined,
+      },
+      select: { id: true, isBot: true, city: true },
     });
 
     const botIds = allUsers
