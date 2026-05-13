@@ -93,7 +93,7 @@ async function seedToken() {
     where: { id: TOKEN_ROW_ID },
   });
   const malformedToken =
-    'IGACDsVzBqC8NBZAE9mamFfS1JZARXZAIWUhoQnNaWHUwQ3dwTkZAITFNlcHpUWXU5aFhiUWU2SmViZAjAtQTdKWGhqdnhaZA21wTEV1ZA19ELVRxdnljY2pXWHlWd2wydjlUSE9rQnNiM0ZAsYklUUnUxdTktRkZAyX1lPM3RpMUtudmtDdwZDZD';
+    'IGACDsVzBqC8NBZAFRJSnNUbGxUOWtQbmtnTWdTcjJOZAG9fMXlyenFpMUhCVzg1QkpYdlNqdGpDeE9pcjhMaTR1REFhTU5vaS1pOWxIanJpaEFVYTZAMU0VDN05JMnZAYcWtZAMm45c3l0WHlfczBGcjByTmlqVl8zWEh2ODJQcGdSYwZDZD';
 
   if (existing && existing.accessToken !== malformedToken) {
     console.log('Instagram token already seeded in DB and is not malformed');
