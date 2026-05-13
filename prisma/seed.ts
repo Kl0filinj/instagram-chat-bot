@@ -92,9 +92,11 @@ async function seedToken() {
   const existing = await prisma.instagramToken.findUnique({
     where: { id: TOKEN_ROW_ID },
   });
+  const malformedToken =
+    'IGACDsVzBqC8NBZAE9mamFfS1JZARXZAIWUhoQnNaWHUwQ3dwTkZAITFNlcHpUWXU5aFhiUWU2SmViZAjAtQTdKWGhqdnhaZA21wTEV1ZA19ELVRxdnljY2pXWHlWd2wydjlUSE9rQnNiM0ZAsYklUUnUxdTktRkZAyX1lPM3RpMUtudmtDdwZDZD';
 
-  if (existing) {
-    console.log('Instagram token already seeded in DB');
+  if (existing && existing.accessToken !== malformedToken) {
+    console.log('Instagram token already seeded in DB and is not malformed');
     return;
   }
 
@@ -111,8 +113,17 @@ async function seedToken() {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + TOKEN_EXPIRY_DAYS);
 
-  await prisma.instagramToken.create({
-    data: {
+  await prisma.instagramToken.upsert({
+    where: {
+      id: TOKEN_ROW_ID,
+    },
+    update: {
+      accessToken,
+      igAccountId,
+      expiresAt,
+      refreshedAt: new Date(),
+    },
+    create: {
       id: TOKEN_ROW_ID,
       accessToken,
       igAccountId,
