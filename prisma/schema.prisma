@@ -79,3 +79,12 @@ model File {
 
   @@index([s3Key])
 }
+
+model InstagramToken {
+  id          String   @id @default("primary")
+  accessToken String
+  igAccountId String
+  expiresAt   DateTime
+  refreshedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+}

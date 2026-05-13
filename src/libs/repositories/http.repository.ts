@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { IG_GRAPH_BASE_URL } from '../constants';
 import { catchError, firstValueFrom, map, retry } from 'rxjs';
 import {
@@ -10,17 +10,64 @@ import {
 import { SendMessageType } from '../common';
 import { Readable } from 'stream';
 import { I18nService } from 'nestjs-i18n';
+import { TokenService } from 'src/token/token.service';
+
+const META_TOKEN_EXPIRED_CODE = 190;
 
 @Injectable()
-export class HttpRepository {
-  constructor(private readonly httpService: HttpService) {}
+export class HttpRepository implements OnModuleInit {
+  private readonly logger = new Logger(HttpRepository.name);
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly tokenService: TokenService,
+  ) {}
+
+  onModuleInit() {
+    this.httpService.axiosRef.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const metaErrorCode = error?.response?.data?.error?.code;
+        const originalRequest = error?.config;
+
+        if (
+          metaErrorCode === META_TOKEN_EXPIRED_CODE &&
+          originalRequest &&
+          !originalRequest._isRetryAfterRefresh
+        ) {
+          this.logger.warn(
+            'Received Meta error 190 (token expired) — refreshing token and retrying',
+          );
+
+          await this.tokenService.refreshToken();
+
+          const newToken = await this.tokenService.getAccessToken();
+          originalRequest._isRetryAfterRefresh = true;
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+
+          return this.httpService.axiosRef(originalRequest);
+        }
+
+        return Promise.reject(error);
+      },
+    );
+  }
+
+  private async buildAuthHeaders() {
+    const token = await this.tokenService.getAccessToken();
+    return {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+  }
 
   async sendQuickReply(
     igId: string,
     replyText: string,
     replyOptions: QuickReplyItemDto[],
   ) {
-    const url = `${IG_GRAPH_BASE_URL}${process.env.trial_IG_ACCOUNT_ID}/messages`;
+    const igAccountId = await this.tokenService.getIgAccountId();
+    const url = `${IG_GRAPH_BASE_URL}${igAccountId}/messages`;
 
     const replyOptionsWithType: QuickReplyItemDto[] = replyOptions.map(
       (item) => ({ ...item, content_type: 'text' }),
@@ -33,13 +80,8 @@ export class HttpRepository {
         quick_replies: replyOptionsWithType,
       },
     };
-    const headers = {
-      Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    };
+    const headers = await this.buildAuthHeaders();
 
-    // console.log('url : ', url);
-    // console.log('body : ', data);
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),
@@ -54,7 +96,8 @@ export class HttpRepository {
   }
 
   async sendMessage(igId: string, payload: string, type: SendMessageType) {
-    const url = `${IG_GRAPH_BASE_URL}${process.env.trial_IG_ACCOUNT_ID}/messages`;
+    const igAccountId = await this.tokenService.getIgAccountId();
+    const url = `${IG_GRAPH_BASE_URL}${igAccountId}/messages`;
 
     const dataOptions: Record<SendMessageType, any> = {
       text: {
@@ -76,14 +119,8 @@ export class HttpRepository {
       },
     };
     const currentData = dataOptions[type];
+    const headers = await this.buildAuthHeaders();
 
-    const headers = {
-      Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    };
-
-    // console.log('url : ', url);
-    // console.log('body : ', currentData);
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, currentData, { headers }),
@@ -100,7 +137,8 @@ export class HttpRepository {
   async sendTemplate(igId: string, payload: SendTemplateDto) {
     const { title, subtitle, image_url, buttons } = payload;
 
-    const url = `${IG_GRAPH_BASE_URL}${process.env.trial_IG_ACCOUNT_ID}/messages`;
+    const igAccountId = await this.tokenService.getIgAccountId();
+    const url = `${IG_GRAPH_BASE_URL}${igAccountId}/messages`;
 
     const data = {
       recipient: { id: igId },
@@ -122,13 +160,8 @@ export class HttpRepository {
       },
     };
 
-    const headers = {
-      Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    };
+    const headers = await this.buildAuthHeaders();
 
-    // console.log('url : ', url);
-    // console.log('body : ', data);
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),
@@ -144,7 +177,6 @@ export class HttpRepository {
   }
 
   async getIgImageFile(url: string) {
-    // console.log('url : ', url);
     const response = await firstValueFrom(
       this.httpService.get(url, { responseType: 'arraybuffer' }).pipe(
         retry({
@@ -183,12 +215,12 @@ export class HttpRepository {
   }
 
   async getFollowers() {
-    const url = `${IG_GRAPH_BASE_URL}${process.env.trial_IG_ACCOUNT_ID}/follows`;
+    const igAccountId = await this.tokenService.getIgAccountId();
+    const url = `${IG_GRAPH_BASE_URL}${igAccountId}/follows`;
 
-    const headers = {
-      Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
-    };
-    // console.log('url : ', url);
+    const token = await this.tokenService.getAccessToken();
+    const headers = { Authorization: `Bearer ${token}` };
+
     const response = await firstValueFrom(
       this.httpService.get(url, { headers }).pipe(
         map((resp) => {
@@ -209,20 +241,10 @@ export class HttpRepository {
   }
 
   async getProfileInfo(igId: string): Promise<IgUserProfileIfoDto> {
-    // const url =
-    //   'https://www.instagram.com/api/v1/users/web_profile_info/?username=kl0filinj';
-    // const url = 'https://i.instagram.com/api/v1/users/922129809859449/info/';
     const url = `https://graph.instagram.com/${igId}?fields=id,username,profile_pic`;
 
-    const headers = {
-      Authorization: `Bearer ${process.env.trial_ACCESS_TOKEN}`,
-    };
-
-    // const headers = {
-    //   'user-agent':
-    //     'Mozilla/5.0 (iPhone; CPU iPhone OS 12_3_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 105.0.0.11.118 (iPhone11,8; iOS 12_3_1; en_US; en-US; scale=2.00; 828x1792; 165586599)',
-    // };
-    // console.log('url : ', url);
+    const token = await this.tokenService.getAccessToken();
+    const headers = { Authorization: `Bearer ${token}` };
 
     const response = await firstValueFrom(
       this.httpService.get(url, { headers }).pipe(
@@ -240,14 +262,8 @@ export class HttpRepository {
       ),
     );
 
-    // {
-    //   id: string;
-    //   username: string;
-    //   profile_pic: string;
-    // }
-
     return {
-      avatarUrl: response?.profile_pic ?? '', // TODO: Find cool plug
+      avatarUrl: response?.profile_pic ?? '',
       username: response?.username,
     };
   }

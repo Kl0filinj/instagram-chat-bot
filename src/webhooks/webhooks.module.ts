@@ -11,6 +11,7 @@ import { FilesModule } from 'src/files/files.module';
 import { TelegramService } from 'src/telegram/telegram.service';
 import { APP_FILTER } from '@nestjs/core';
 import { WebhookExceptionFilter } from 'src/libs/filters/webhooks-exception.filter';
+import { TokenModule } from 'src/token/token.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { WebhookExceptionFilter } from 'src/libs/filters/webhooks-exception.filt
     }),
     RedisModule.forRoot(process.env.REDIS_URL),
     FilesModule,
+    TokenModule,
   ],
   controllers: [WebhooksController],
   providers: [

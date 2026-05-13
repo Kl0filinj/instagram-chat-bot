@@ -9,12 +9,14 @@ import { HelpersModule } from './webhooks/helpers/helpers.module';
 import { S3Module } from './s3/s3.module';
 import { AdminModule } from './admin/admin.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { TokenModule } from './token/token.module';
 
 @Module({
   imports: [
     PrismaModule,
     ReportsModule,
     ConfigModule,
+    TokenModule,
     WebhooksModule,
     HelpersModule,
     S3Module,
