@@ -1,12 +1,12 @@
 import {
   DeleteObjectCommand,
-  GetObjectCommand,
+  // GetObjectCommand, // only needed for presigned URLs
   PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+// import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
 
@@ -60,23 +60,31 @@ export class S3Service {
     }
   }
 
-  async getFileUrl(key: string, expiresIn: number = 3600) {
+  async getFileUrl(key: string, _expiresIn: number = 3600) {
     if (key.includes('http')) {
       return key;
     }
-    const command = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-    });
-    return await getSignedUrl(this.s3, command, { expiresIn });
+    // const command = new GetObjectCommand({
+    //   Bucket: this.bucket,
+    //   Key: key,
+    // });
+    // return await getSignedUrl(this.s3, command, { expiresIn });
+
+    // Public URL — bucket must have public read access enabled in AWS S3
+    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+
+    // Presigned URL (private bucket) — commented out because Instagram cannot
+    // fetch presigned S3 URLs when rendering template card images
+    // const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+    // return await getSignedUrl(this.s3, command, { expiresIn });
   }
 
   /**
-   * Get a signed URL for a file that expires in 24 hours (86400 seconds)
-   * This is used for files that will be cached in Redis
+   * Get a URL for a file to be cached in Redis
    */
   async getSignedUrlForCache(key: string): Promise<string> {
-    return this.getFileUrl(key, 86400); // 24 hours
+    // return this.getFileUrl(key, 86400); // 24 hours
+    return this.getFileUrl(key);
   }
 
   /**

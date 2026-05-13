@@ -92,10 +92,8 @@ async function seedToken() {
   const existing = await prisma.instagramToken.findUnique({
     where: { id: TOKEN_ROW_ID },
   });
-  const malformedToken =
-    'IGACDsVzBqC8NBZAFRJSnNUbGxUOWtQbmtnTWdTcjJOZAG9fMXlyenFpMUhCVzg1QkpYdlNqdGpDeE9pcjhMaTR1REFhTU5vaS1pOWxIanJpaEFVYTZAMU0VDN05JMnZAYcWtZAMm45c3l0WHlfczBGcjByTmlqVl8zWEh2ODJQcGdSYwZDZD';
 
-  if (existing && existing.accessToken !== malformedToken) {
+  if (existing) {
     console.log('Instagram token already seeded in DB and is not malformed');
     console.log('@@ VALID TOKEN: ', existing.accessToken);
     return;
