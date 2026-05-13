@@ -75,6 +75,7 @@ export class TokenService {
       );
       return;
     }
+    console.log('@@ REFRESH: Existing token: ', record.accessToken);
 
     try {
       const response = await firstValueFrom(
@@ -86,6 +87,7 @@ export class TokenService {
         }),
       );
 
+      console.log('@@ REFRESH: Response: ', response.data);
       const { access_token, expires_in } = response.data;
 
       const refreshedAt = new Date();
@@ -99,6 +101,7 @@ export class TokenService {
           refreshedAt,
         },
       });
+      console.log('@@ REFRESH: Updated token: ', access_token);
 
       this.invalidateCache();
 

@@ -97,9 +97,12 @@ async function seedToken() {
 
   if (existing && existing.accessToken !== malformedToken) {
     console.log('Instagram token already seeded in DB and is not malformed');
+    console.log('@@ VALID TOKEN: ', existing.accessToken);
     return;
   }
 
+  console.log('@@ SEEDING TOKEN EXISTING: ', existing?.accessToken);
+  console.log('@@ SEEDING TOKEN ENV: ', process.env.trial_ACCESS_TOKEN);
   const accessToken = process.env.trial_ACCESS_TOKEN;
   const igAccountId = process.env.trial_IG_ACCOUNT_ID;
 

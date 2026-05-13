@@ -13,6 +13,7 @@ import { I18nService } from 'nestjs-i18n';
 import { TokenService } from 'src/token/token.service';
 
 const META_TOKEN_EXPIRED_CODE = 190;
+const TOKEN_REFRESH_URL = 'refresh_access_token';
 
 @Injectable()
 export class HttpRepository implements OnModuleInit {
@@ -30,13 +31,17 @@ export class HttpRepository implements OnModuleInit {
         const metaErrorCode = error?.response?.data?.error?.code;
         const originalRequest = error?.config;
 
+        const isRefreshCall = originalRequest?.url?.includes(TOKEN_REFRESH_URL);
+
         if (
           metaErrorCode === META_TOKEN_EXPIRED_CODE &&
           originalRequest &&
-          !originalRequest._isRetryAfterRefresh
+          !originalRequest._isRetryAfterRefresh &&
+          !isRefreshCall
         ) {
           this.logger.warn(
-            'Received Meta error 190 (token expired) — refreshing token and retrying',
+            'Received Meta error 190 (token expired) — refreshing token and retrying: ',
+            error?.response?.data?.error,
           );
 
           await this.tokenService.refreshToken();
