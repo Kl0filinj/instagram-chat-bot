@@ -89,12 +89,12 @@ const seedCities = async () => {
 // };
 
 async function seedToken() {
-  const existing = await this.prisma.instagramToken.findUnique({
+  const existing = await prisma.instagramToken.findUnique({
     where: { id: TOKEN_ROW_ID },
   });
 
   if (existing) {
-    this.logger.log('Instagram token already seeded in DB');
+    console.log('Instagram token already seeded in DB');
     return;
   }
 
@@ -102,7 +102,7 @@ async function seedToken() {
   const igAccountId = process.env.trial_IG_ACCOUNT_ID;
 
   if (!accessToken || !igAccountId) {
-    this.logger.warn(
+    console.log(
       'trial_ACCESS_TOKEN or trial_IG_ACCOUNT_ID not set in env — skipping token seed',
     );
     return;
@@ -111,7 +111,7 @@ async function seedToken() {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + TOKEN_EXPIRY_DAYS);
 
-  await this.prisma.instagramToken.create({
+  await prisma.instagramToken.create({
     data: {
       id: TOKEN_ROW_ID,
       accessToken,
@@ -120,7 +120,7 @@ async function seedToken() {
     },
   });
 
-  this.logger.log(
+  console.log(
     `Instagram token seeded from env. Expires at: ${expiresAt.toISOString()}`,
   );
 }
