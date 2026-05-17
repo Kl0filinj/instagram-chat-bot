@@ -1,12 +1,13 @@
 # STEP 2 — Full HTTPS config with HTTP→HTTPS redirect.
-# This file has a .ssl.conf extension so nginx IGNORES it on startup
-# (only *.conf files are loaded).
+# This file is named .ssl (no .conf suffix) so nginx IGNORES it on startup —
+# nginx only loads files matching *.conf. The .ssl.conf pattern also ends in
+# .conf and would be loaded, which is why this file uses .ssl only.
 #
-# Activate after certs exist:
-#   1. docker compose run --rm certbot  (see DOMAIN_SETUP_INSTRUCTION.md)
+# Activate after certs exist (see DOMAIN_SETUP_INSTRUCTION.md):
+#   1. Run certbot on the host server
 #   2. mv nginx/conf.d/instabotapp.com.conf nginx/conf.d/instabotapp.com.http.bak
-#      mv nginx/conf.d/instabotapp.com.ssl.conf nginx/conf.d/instabotapp.com.conf
-#   3. docker compose exec nginx nginx -s reload
+#      mv nginx/conf.d/instabotapp.com.ssl  nginx/conf.d/instabotapp.com.conf
+#   3. docker compose -f docker-compose-build.yaml exec nginx nginx -s reload
 
 # Redirect all HTTP traffic to HTTPS (except ACME challenge)
 server {

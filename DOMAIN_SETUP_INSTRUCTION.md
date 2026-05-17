@@ -24,11 +24,11 @@ nginx/
 ├── nginx.conf                       # Global config — loaded by the nginx container
 ├── conf.d/
 │   ├── instabotapp.com.conf         # ACTIVE — HTTP-only (Step 1)
-│   └── instabotapp.com.ssl.conf     # INACTIVE — full HTTPS (Step 2, rename to activate)
+│   └── instabotapp.com.ssl          # INACTIVE — full HTTPS (Step 2, rename to activate)
 └── instabotapp.com                  # Reference only — bare-metal config, not used in Docker
 ```
 
-nginx loads every `*.conf` file in `conf.d/` automatically. Files with any other extension (`.ssl.conf`, `.bak`) are ignored, which is why the HTTPS config sits there safely until you're ready to activate it.
+nginx loads every `*.conf` file in `conf.d/` automatically. Files with any other extension (`.ssl`, `.bak`) are ignored. Note: `.ssl.conf` would **not** be safe — it still ends in `.conf` and would be loaded. The HTTPS template uses `.ssl` with no `.conf` suffix for this reason.
 
 ---
 
@@ -137,7 +137,7 @@ cd /opt/instagram-chat-bot/nginx/conf.d
 mv instabotapp.com.conf instabotapp.com.http.bak
 
 # Activate the HTTPS config
-mv instabotapp.com.ssl.conf instabotapp.com.conf
+mv instabotapp.com.ssl instabotapp.com.conf
 ```
 
 Test and reload nginx (no restart needed):
