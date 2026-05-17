@@ -85,8 +85,8 @@ sudo mkdir -p /var/www/certbot
 ## Step 4 — Deploy the repo and configure .env
 
 ```bash
-git clone <your-repo> /opt/instagram-chat-bot
-cd /opt/instagram-chat-bot
+git clone <your-repo> ~/instagram-chat-bot
+cd ~/instagram-chat-bot
 cp .env.example .env
 nano .env   # fill in all values; set SERVER_DOMAIN=http://instabotapp.com for now
 ```
@@ -131,7 +131,7 @@ the nginx container can already read them via the bind mount.
 ## Step 7 — Activate the HTTPS config
 
 ```bash
-cd /opt/instagram-chat-bot/nginx/conf.d
+cd ~/instagram-chat-bot/nginx/conf.d
 
 # Archive the HTTP-only config
 mv instabotapp.com.conf instabotapp.com.http.bak
@@ -140,9 +140,10 @@ mv instabotapp.com.conf instabotapp.com.http.bak
 mv instabotapp.com.ssl instabotapp.com.conf
 ```
 
-Test and reload nginx (no restart needed):
+Test and reload nginx (no restart needed, run from the repo root):
 
 ```bash
+cd ~/instagram-chat-bot
 docker compose -f docker-compose-build.yaml exec nginx nginx -t
 # must say: syntax is ok / test is successful
 
@@ -166,7 +167,7 @@ curl -I http://instabotapp.com/
 ## Step 9 — Update SERVER_DOMAIN in .env
 
 ```bash
-nano /opt/instagram-chat-bot/.env
+nano ~/instagram-chat-bot/.env
 # Change: SERVER_DOMAIN=https://instabotapp.com
 ```
 
@@ -202,7 +203,7 @@ Automate with a cron job (runs on the 1st and 15th of each month):
 ```bash
 sudo crontab -e
 # Add:
-0 3 1,15 * * certbot renew --quiet && docker compose -f /opt/instagram-chat-bot/docker-compose-build.yaml exec nginx nginx -s reload
+0 3 1,15 * * certbot renew --quiet && docker compose -f /root/instagram-chat-bot/docker-compose-build.yaml exec nginx nginx -s reload
 ```
 
 ---
