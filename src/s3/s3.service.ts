@@ -1,7 +1,7 @@
 import {
   DeleteObjectCommand,
   // GetObjectCommand, // only needed for presigned URLs
-  GetObjectCommand,
+  // GetObjectCommand,
   PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
@@ -10,7 +10,7 @@ import {
 // import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { Readable } from 'stream';
+// import { Readable } from 'stream';
 
 @Injectable()
 export class S3Service {
@@ -71,15 +71,16 @@ export class S3Service {
     //   Key: key,
     // });
     // return await getSignedUrl(this.s3, command, { expiresIn });
-    const serverDomain = process.env.SERVER_DOMAIN?.trim();
-    if (serverDomain) {
-      const normalizedServerDomain = serverDomain.endsWith('/')
-        ? serverDomain.slice(0, -1)
-        : serverDomain;
-      return `${normalizedServerDomain}/files/${key}`;
-    }
+    //
+    // Decided to use direct URL for now, because it's faster option here.
+    // const serverDomain = process.env.SERVER_DOMAIN?.trim();
+    // if (serverDomain) {
+    //   const normalizedServerDomain = serverDomain.endsWith('/')
+    //     ? serverDomain.slice(0, -1)
+    //     : serverDomain;
+    //   return `${normalizedServerDomain}/files/${key}`;
+    // }
 
-    // Fallback URL
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
 
     // Presigned URL (private bucket) — commented out because Instagram cannot
@@ -96,22 +97,22 @@ export class S3Service {
     return this.getFileUrl(key);
   }
 
-  async getFileStream(key: string): Promise<{
-    stream: Readable;
-    contentType: string;
-    contentLength?: number;
-  }> {
-    const command = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-    });
-    const response = await this.s3.send(command);
-    return {
-      stream: response.Body as Readable,
-      contentType: response.ContentType || 'application/octet-stream',
-      contentLength: response.ContentLength,
-    };
-  }
+  // async getFileStream(key: string): Promise<{
+  //   stream: Readable;
+  //   contentType: string;
+  //   contentLength?: number;
+  // }> {
+  //   const command = new GetObjectCommand({
+  //     Bucket: this.bucket,
+  //     Key: key,
+  //   });
+  //   const response = await this.s3.send(command);
+  //   return {
+  //     stream: response.Body as Readable,
+  //     contentType: response.ContentType || 'application/octet-stream',
+  //     contentLength: response.ContentLength,
+  //   };
+  // }
 
   /**
    * Delete a file from S3 by its key
