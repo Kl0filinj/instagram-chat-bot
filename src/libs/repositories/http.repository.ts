@@ -130,10 +130,10 @@ export class HttpRepository implements OnModuleInit {
       const response = await firstValueFrom(
         this.httpService.post(url, currentData, { headers }),
       );
-      console.log('Text message sent successfully:', response.data);
+      console.log('Image/text message sent successfully:', response.data);
     } catch (error) {
       console.error(
-        'Error sending Text message:',
+        'Error sending image/text message:',
         error.response?.data || error.message,
       );
     }
@@ -167,8 +167,12 @@ export class HttpRepository implements OnModuleInit {
       },
     };
 
-    //! This is temp solution, remove when templates will work with images again
+    //! Workaround: send image separately first so nginx caches it.
+    //! When Meta's template card renderer fetches the same URL it gets a
+    //! <5ms nginx cache HIT instead of the full NestJS → S3 round-trip,
+    //! preventing a timeout in Meta's strict template image fetch pipeline.
     await this.sendMessage(igId, image_url, 'image');
+
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),

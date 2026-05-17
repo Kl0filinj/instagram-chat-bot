@@ -53,18 +53,29 @@ server {
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
 
-        # Disable buffering so the Content-Length set by the app is forwarded
-        # as-is to the client — avoids nginx stripping it when image size
-        # exceeds the default 32KB proxy buffer.
-        proxy_buffering    off;
+        # Cache responses on-disk so Meta's template card renderer (which has
+        # a short fetch timeout) gets a <5ms response instead of waiting for
+        # the full nginx → NestJS → S3 round-trip.
+        # proxy_buffering must be ON for caching to work; Content-Length is
+        # preserved because the NestJS app sets it explicitly from S3.
+        proxy_buffering    on;
+        proxy_cache        files_cache;
+        proxy_cache_valid  200 24h;
+        proxy_cache_key    "$uri";
+        proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
+        add_header         X-Cache-Status $upstream_cache_status always;
 
-        # Strip CORS headers added by NestJS global middleware.
+        # Strip CORS and caching headers added by NestJS global middleware.
         # "Vary: Origin" signals to CDNs that responses vary per requester —
         # Meta's image fetcher may refuse to use responses with this header.
+        # "Cache-Control" is stripped here and re-set cleanly below to prevent
+        # duplicate headers when nginx's add_header and the app both set it.
         proxy_hide_header  Vary;
         proxy_hide_header  Access-Control-Allow-Origin;
         proxy_hide_header  Access-Control-Allow-Credentials;
         proxy_hide_header  Access-Control-Expose-Headers;
+        proxy_hide_header  Cache-Control;
+        proxy_hide_header  Expires;
 
         add_header Cache-Control             "public, max-age=86400";
         add_header X-Frame-Options           "SAMEORIGIN"      always;
