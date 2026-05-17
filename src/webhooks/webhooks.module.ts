@@ -3,6 +3,8 @@ import { WebhooksService } from './webhooks.service';
 import { WebhooksController } from './webhooks.controller';
 import { HttpModule } from '@nestjs/axios';
 import { HttpRepository, RedisModule, RedisRepository } from '@libs';
+import * as http from 'http';
+import * as https from 'https';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AcceptLanguageResolver, I18nModule } from 'nestjs-i18n';
 import { HelpersService } from './helpers/helpers.service';
@@ -15,7 +17,10 @@ import { TokenModule } from 'src/token/token.module';
 
 @Module({
   imports: [
-    HttpModule,
+    HttpModule.register({
+      httpAgent: new http.Agent({ keepAlive: true }),
+      httpsAgent: new https.Agent({ keepAlive: true }),
+    }),
     ScheduleModule.forRoot(),
     I18nModule.forRoot({
       fallbackLanguage: 'en',

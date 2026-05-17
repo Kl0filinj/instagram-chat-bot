@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import {
   findCity,
   HandleReplyDto,
@@ -8,6 +8,7 @@ import {
   createUserInfoPrompts,
   templateButtons,
   UserEntity,
+  CityEntity,
   UserInfoFlowType,
   UserSexType,
   wrongReplyBaseMessage,
@@ -43,9 +44,11 @@ import { TelegramService } from 'src/telegram/telegram.service';
 // TODO: Change db passwords
 
 @Injectable()
-export class WebhooksService {
+export class WebhooksService implements OnModuleInit {
   // private cityDistanceCache = new Map<string, CityDistance[]>();
   // private cityNameMap = new Map<string, CityObject[]>();
+
+  private cachedCities: CityEntity[] = [];
 
   constructor(
     private prisma: PrismaService,
@@ -56,6 +59,10 @@ export class WebhooksService {
     private readonly telegramService: TelegramService,
   ) {
     // this.initializeCityCache();
+  }
+
+  async onModuleInit() {
+    this.cachedCities = await this.prisma.city.findMany();
   }
 
   async handleMenu(igId: string) {
@@ -703,8 +710,7 @@ export class WebhooksService {
       return;
     }
 
-    //TODO: Add cache here
-    const allCities = await this.prisma.city.findMany();
+    const allCities = this.cachedCities;
     const findCityResp = findCity(allCities, location);
     // console.log('findCityResp : ', findCityResp);
 
@@ -1166,38 +1172,28 @@ export class WebhooksService {
   }
 
   private async matchLike(igId: string, targetUserId: string) {
-    const ourUser = await this.prisma.user.update({
-      where: {
-        id: igId,
-      },
-      data: {
-        likedUsers: {
-          push: targetUserId,
-        },
-      },
-    });
+    const [ourUser, targetUser] = await Promise.all([
+      this.prisma.user.update({
+        where: { id: igId },
+        data: { likedUsers: { push: targetUserId } },
+      }),
+      this.prisma.user.update({
+        where: { id: targetUserId },
+        data: { likedUsers: { push: igId } },
+      }),
+    ]);
 
-    const targetUser = await this.prisma.user.update({
-      where: {
-        id: targetUserId,
-      },
-      data: {
-        likedUsers: {
-          push: igId,
-        },
-      },
-    });
-
-    const { username: ourUserNickname } =
-      await this.httpRepository.getProfileInfo(ourUser.id);
-    const { username: targetUserNickname } =
-      await this.httpRepository.getProfileInfo(targetUser.id);
-    const targetAvatarUrl = await this.filesService.getFileUrl(
-      targetUser.avatarFileId,
-    );
-    const ourAvatarUrl = await this.filesService.getFileUrl(
-      ourUser.avatarFileId,
-    );
+    const [
+      { username: ourUserNickname },
+      { username: targetUserNickname },
+      targetAvatarUrl,
+      ourAvatarUrl,
+    ] = await Promise.all([
+      this.httpRepository.getProfileInfo(ourUser.id),
+      this.httpRepository.getProfileInfo(targetUser.id),
+      this.filesService.getFileUrl(targetUser.avatarFileId),
+      this.filesService.getFileUrl(ourUser.avatarFileId),
+    ]);
 
     await this.httpRepository.sendTemplate(ourUser.id, {
       title: this.i18nService.t('common.MATCH.target_user_match', {
@@ -1340,21 +1336,15 @@ export class WebhooksService {
   }
 
   private async scrollLike(igId: string, targetIgId: string) {
-    const ourUser = await this.prisma.user.update({
-      where: {
-        id: igId,
-      },
-      data: {
-        likedUsers: {
-          push: targetIgId,
-        },
-      },
-    });
-    const targetUser = await this.prisma.user.findUnique({
-      where: {
-        id: targetIgId,
-      },
-    });
+    const [ourUser, targetUser] = await Promise.all([
+      this.prisma.user.update({
+        where: { id: igId },
+        data: { likedUsers: { push: targetIgId } },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: targetIgId },
+      }),
+    ]);
 
     if (!targetUser.rejectedUsers.includes(ourUser.id)) {
       const avatarUrl = await this.filesService.getFileUrl(
@@ -1438,8 +1428,7 @@ export class WebhooksService {
       },
     };
     const currentAgeOption = ageOptions[targetUser.sex];
-    //TODO: ADD CACHE HERE !!!!!!!!!!!!
-    const allCities = await this.prisma.city.findMany();
+    const allCities = this.cachedCities;
 
     const findNextUser = async (
       city: string,
