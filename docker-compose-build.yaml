@@ -28,19 +28,6 @@ services:
     networks:
       - backend
 
-  ngrok:
-    image: ngrok/ngrok:latest
-    restart: unless-stopped
-    # ports:
-    #   - "4040:4040"
-    environment:
-      - NGROK_AUTHTOKEN=${NGROK_AUTH_TOKEN}
-    command: http --host-header=rewrite --domain=pug-simple-tadpole.ngrok-free.app app:3000
-    depends_on:
-      - app
-    networks:
-      - backend
-
   app:
     build: .
     container_name: ichat_bot_app
@@ -49,13 +36,48 @@ services:
       - .env
     environment:
       - NODE_ENV=prod
-    ports:
-      - '3000:3000'
+    # Port 3000 is intentionally NOT exposed to the host.
+    # All public traffic enters through the nginx container.
+    # Uncomment temporarily if you need direct access for debugging:
+    # ports:
+    #   - '3000:3000'
     depends_on:
       - database
       - redis
     networks:
       - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: ichat_bot_nginx
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      # Config from the repo (read-only)
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Host paths written by the server-installed certbot (read-only inside container)
+      - /var/www/certbot:/var/www/certbot:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - app
+    networks:
+      - backend
+
+  # ngrok — disabled now that the real domain is active.
+  # Re-enable for local tunnel testing if needed.
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   restart: unless-stopped
+  #   environment:
+  #     - NGROK_AUTHTOKEN=${NGROK_AUTH_TOKEN}
+  #   command: http --host-header=rewrite --domain=pug-simple-tadpole.ngrok-free.app app:3000
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - backend
 
   # pgadmin: # FOR FUTURE
   #   image: dpage/pgadmin4:latest

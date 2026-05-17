@@ -145,6 +145,7 @@ export class HttpRepository implements OnModuleInit {
     const igAccountId = await this.tokenService.getIgAccountId();
     const url = `${IG_GRAPH_BASE_URL}${igAccountId}/messages`;
 
+    const headers = await this.buildAuthHeaders();
     const data = {
       recipient: { id: igId },
       message: {
@@ -165,8 +166,7 @@ export class HttpRepository implements OnModuleInit {
       },
     };
 
-    const headers = await this.buildAuthHeaders();
-
+    // await this.sendMessage(igId, image_url, 'image');
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),

@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   // GetObjectCommand, // only needed for presigned URLs
+  GetObjectCommand,
   PutObjectCommand,
   PutObjectCommandInput,
   PutObjectCommandOutput,
@@ -9,6 +10,7 @@ import {
 // import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { Readable } from 'stream';
 
 @Injectable()
 export class S3Service {
@@ -69,8 +71,15 @@ export class S3Service {
     //   Key: key,
     // });
     // return await getSignedUrl(this.s3, command, { expiresIn });
+    const serverDomain = process.env.SERVER_DOMAIN?.trim();
+    if (serverDomain) {
+      const normalizedServerDomain = serverDomain.endsWith('/')
+        ? serverDomain.slice(0, -1)
+        : serverDomain;
+      return `${normalizedServerDomain}/files/${key}`;
+    }
 
-    // Public URL — bucket must have public read access enabled in AWS S3
+    // Fallback URL
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
 
     // Presigned URL (private bucket) — commented out because Instagram cannot
@@ -85,6 +94,20 @@ export class S3Service {
   async getSignedUrlForCache(key: string): Promise<string> {
     // return this.getFileUrl(key, 86400); // 24 hours
     return this.getFileUrl(key);
+  }
+
+  async getFileStream(
+    key: string,
+  ): Promise<{ stream: Readable; contentType: string }> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    });
+    const response = await this.s3.send(command);
+    return {
+      stream: response.Body as Readable,
+      contentType: response.ContentType || 'application/octet-stream',
+    };
   }
 
   /**

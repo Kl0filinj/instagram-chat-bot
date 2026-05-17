@@ -9,8 +9,8 @@ import {
 import { HttpRepository } from './repositories';
 import { RedisClientType } from 'redis';
 
-export const FB_GRAPH_BASE_URL = 'https://graph.facebook.com/v21.0/';
-export const IG_GRAPH_BASE_URL = 'https://graph.instagram.com/v21.0/';
+export const FB_GRAPH_BASE_URL = 'https://graph.facebook.com/v25.0/';
+export const IG_GRAPH_BASE_URL = 'https://graph.instagram.com/v25.0/';
 export const IG_BASE_URL = 'https://www.instagram.com';
 export const startAge = 16;
 
