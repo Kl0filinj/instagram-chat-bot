@@ -96,9 +96,11 @@ export class S3Service {
     return this.getFileUrl(key);
   }
 
-  async getFileStream(
-    key: string,
-  ): Promise<{ stream: Readable; contentType: string }> {
+  async getFileStream(key: string): Promise<{
+    stream: Readable;
+    contentType: string;
+    contentLength?: number;
+  }> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -107,6 +109,7 @@ export class S3Service {
     return {
       stream: response.Body as Readable,
       contentType: response.ContentType || 'application/octet-stream',
+      contentLength: response.ContentLength,
     };
   }
 

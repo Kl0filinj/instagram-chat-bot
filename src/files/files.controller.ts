@@ -21,14 +21,22 @@ export class FilesController {
   ) {
     try {
       console.log('@@ LOG: ', key, req.headers);
-      const { stream, contentType } = await this.s3Service.getFileStream(key);
+      const { stream, contentType, contentLength } =
+        await this.s3Service.getFileStream(key);
 
-      res.set({
+      const headers: Record<string, string | number> = {
         'Content-Type': contentType,
         'Content-Disposition': 'inline',
         'Cache-Control': 'public, max-age=86400',
-      });
+      };
 
+      // Content-Length eliminates chunked transfer encoding so Meta's
+      // image fetcher can buffer the response correctly for template rendering.
+      if (contentLength !== undefined) {
+        headers['Content-Length'] = contentLength;
+      }
+
+      res.set(headers);
       stream.pipe(res);
     } catch {
       throw new NotFoundException('File not found');
