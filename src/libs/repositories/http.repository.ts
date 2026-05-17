@@ -167,7 +167,8 @@ export class HttpRepository implements OnModuleInit {
       },
     };
 
-    // await this.sendMessage(igId, image_url, 'image');
+    //! This is temp solution, remove when templates will work with images again
+    await this.sendMessage(igId, image_url, 'image');
     try {
       const response = await firstValueFrom(
         this.httpService.post(url, data, { headers }),
